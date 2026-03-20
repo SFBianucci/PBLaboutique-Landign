@@ -116,10 +116,10 @@ REGLAS ADICIONALES Y FORMATO:
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-8 right-8 w-full max-w-[380px] h-[500px] max-h-[80vh] bg-surface-container-highest rounded-sm shadow-2xl border border-white/10 flex flex-col z-50 overflow-hidden"
+            className="fixed bottom-8 right-8 w-full max-w-[380px] h-[500px] max-h-[80vh] bg-surface-container-highest rounded-sm shadow-2xl border border-outline-variant/15 flex flex-col z-50 overflow-hidden"
           >
             {/* Header */}
-            <div className="bg-surface-container-low p-4 flex justify-between items-center border-b border-white/5">
+            <div className="bg-surface-container-low p-4 flex justify-between items-center border-b border-outline-variant/10">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
                   <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -133,7 +133,7 @@ REGLAS ADICIONALES Y FORMATO:
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-on-surface-variant hover:text-white transition-colors"
+                className="text-on-surface-variant hover:text-on-surface transition-colors"
                 aria-label="Cerrar asistente"
               >
                 <span className="material-symbols-outlined">close</span>
@@ -151,7 +151,7 @@ REGLAS ADICIONALES Y FORMATO:
                     className={`max-w-[85%] p-3 rounded-sm text-sm font-light leading-relaxed markdown-body ${
                       msg.role === 'user'
                         ? 'bg-primary text-on-primary'
-                        : 'bg-surface-container-low text-on-surface border border-white/5'
+                        : 'bg-surface-container-low text-on-surface border border-outline-variant/10'
                     }`}
                   >
                     <Markdown>{msg.text}</Markdown>
@@ -160,7 +160,7 @@ REGLAS ADICIONALES Y FORMATO:
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-surface-container-low text-on-surface-variant border border-white/5 p-3 rounded-sm text-sm flex gap-1">
+                  <div className="bg-surface-container-low text-on-surface-variant border border-outline-variant/10 p-3 rounded-sm text-sm flex gap-1">
                     <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
                     <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
                     <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
@@ -171,7 +171,7 @@ REGLAS ADICIONALES Y FORMATO:
             </div>
 
             {/* Input Area */}
-            <div className="p-4 bg-surface-container-low border-t border-white/5">
+            <div className="p-4 bg-surface-container-low border-t border-outline-variant/10">
               <div className="relative flex items-center">
                 <input
                   type="text"
@@ -185,7 +185,7 @@ REGLAS ADICIONALES Y FORMATO:
                 <button
                   onClick={handleSend}
                   disabled={!input.trim() || isLoading}
-                  className="absolute right-2 w-8 h-8 flex items-center justify-center text-primary hover:text-white disabled:opacity-50 disabled:hover:text-primary transition-colors"
+                  className="absolute right-2 w-8 h-8 flex items-center justify-center text-primary hover:text-on-surface disabled:opacity-50 disabled:hover:text-primary transition-colors"
                   aria-label="Enviar mensaje"
                 >
                   <span className="material-symbols-outlined text-xl">send</span>
