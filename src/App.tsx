@@ -4,7 +4,6 @@
  */
 
 import { useState } from 'react';
-import { Chatbot } from './components/Chatbot';
 import { Navbar } from './components/Navbar';
 import { Select } from './components/Select';
 import { motion } from 'motion/react';
@@ -436,8 +435,7 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Chatbot Integration */}
-      <Chatbot />
+      {/* Chatbot Integration — disabled for now */}
     </div>
   );
 }
