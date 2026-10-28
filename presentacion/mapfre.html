@@ -15,6 +15,7 @@
   body { font-family: "Geist", system-ui, sans-serif; color: var(--text); background: #222; }
   h1, h2, h3 { font-weight: 600; letter-spacing: -0.025em; text-wrap: balance; }
   p { text-wrap: pretty; }
+  a { color: inherit; text-decoration: none; }
 
   .page {
     position: relative; width: 297mm; height: 210mm; overflow: hidden; page-break-after: always;
@@ -58,9 +59,9 @@
   .cover { padding: 0; background: var(--ink); }
   .cover::before { display: none; }
   .cover .bg { position: absolute; inset: 0; }
-  .cover .bg img { width: 100%; height: 100%; object-fit: cover; object-position: center 60%; filter: saturate(0.6) brightness(0.55); }
+  .cover .bg img { width: 100%; height: 100%; object-fit: cover; object-position: center 60%; filter: saturate(0.75) brightness(0.8); }
   .cover .bg::after { content: ""; position: absolute; inset: 0;
-    background: linear-gradient(90deg, var(--ink) 0%, rgb(10 13 11 / 0.92) 38%, rgb(10 13 11 / 0.35) 75%, rgb(10 13 11 / 0.55) 100%),
+    background: linear-gradient(90deg, var(--ink) 0%, rgb(10 13 11 / 0.9) 36%, rgb(10 13 11 / 0.3) 72%, rgb(10 13 11 / 0.25) 100%),
                 radial-gradient(50% 60% at 20% 100%, rgb(0 91 46 / 0.45), transparent 70%); }
   .cover .inner { position: relative; height: 100%; padding: 18mm 20mm 16mm; display: flex; flex-direction: column; }
   .cover .logo { width: 20mm; height: 20mm; }
@@ -125,7 +126,7 @@
     <div class="meta">
       <div><b>Desde 1997</b>Trayectoria en el rubro</div>
       <div><b>Lomas del Mirador</b>La Matanza · Zona Oeste</div>
-      <div><b>Octubre 2026</b>Gallo Silvina Lilian</div>
+      <div><b>Gallo Silvina Lilian</b>Razón social</div>
     </div>
   </div>
   <div class="tag">Carpeta de presentación</div>
@@ -182,7 +183,7 @@
 <section class="page">
   <div class="head"><div class="brand"><img src="../public/logo.svg" alt="" />Parabrisas <b>La Boutique</b></div><div>Presentación institucional · MAPFRE</div></div>
   <div class="content" style="grid-template-columns: 100mm 1fr;">
-    <div class="photo"><img src="img/interior.jpg" alt="Interior del taller" /><div class="cap">Taller cubierto · stock propio de cristales</div></div>
+    <div class="photo"><img src="img/interior.jpg" alt="Interior del taller" style="object-position:32% center;" /><div class="cap">Taller cubierto · stock propio de cristales</div></div>
     <div style="display:flex; flex-direction:column;">
       <div class="eyebrow">03 · Capacidad operativa</div>
       <h2 class="title">Una estructura preparada para responder.</h2>
@@ -216,10 +217,10 @@
       </div>
     </div>
     <div class="insurers" style="align-content:start;">
-      <div>Allianz</div><div>Answer</div><div>ATM</div><div>Chubb</div><div>Digna</div><div>Experta</div>
+      <div>Allianz</div><div>Answer</div><div>ATM</div><div>La Caja</div><div>Chubb</div><div>Digna</div><div>Experta</div>
       <div>La Equitativa</div><div>Federación Patronal</div><div>Galeno</div><div>Galicia Seguros</div><div>La Holando</div>
       <div>Meridional Seguros</div><div>Iaorana</div><div>Integrity</div><div>Mercantil Andina</div><div>Metropol</div>
-      <div>Nacional</div><div>Nivel</div><div>Paraná</div><div>Provincia</div><div>Providencia</div><div>Río Uruguay</div>
+      <div>Nación</div><div>Nivel</div><div>Paraná</div><div>Provincia</div><div>Providencia</div><div>Río Uruguay</div>
       <div>Rivadavia</div><div>Sancor</div><div>SMG</div><div>La Segunda</div><div>Segurcoop</div><div>San Cristóbal</div>
       <div>Triunfo</div><div>Victoria Seguros</div><div>Zurich</div>
     </div>
@@ -254,19 +255,22 @@
       <p class="lead" style="margin-top:7mm;">Nos interesa integrarnos a la red de prestadores de MAPFRE y aportar una atención responsable, con experiencia en el rubro, capacidad operativa y disposición para coordinar cada solicitud de servicio.</p>
       <div style="margin-top:auto;">
         <div class="label">Contacto directo</div>
-        <div style="margin-top:2mm; font-size:24pt; font-weight:600; letter-spacing:-0.03em;">11 5715-1222</div>
-        <div style="margin-top:1mm; font-size:10.5pt; color:var(--mute);">parabrisaslaboutique@hotmail.com</div>
+        <div style="margin-top:2mm; font-size:24pt; font-weight:600; letter-spacing:-0.03em;"><a href="tel:+541157151222">11 5715-1222</a></div>
+        <div style="margin-top:1.5mm; font-size:14pt; font-weight:500; letter-spacing:-0.02em;"><a href="tel:+541144826504">11 4482-6504</a> <span style="font-size:9pt; color:var(--mute); font-weight:400;">línea fija</span></div>
+        <div style="margin-top:2mm; font-size:10.5pt; color:var(--mute);"><a href="mailto:parabrisaslaboutique@hotmail.com">parabrisaslaboutique@hotmail.com</a></div>
       </div>
     </div>
     <div class="data">
       <div class="r"><span>Razón social</span><span>Gallo Silvina Lilian</span></div>
       <div class="r"><span>CUIT</span><span>27-23222613-2</span></div>
       <div class="r"><span>Condición IVA</span><span>Responsable inscripto · Facturación A y B</span></div>
+      <div class="r"><span>Teléfonos</span><span><a href="tel:+541157151222">11 5715-1222</a> · <a href="tel:+541144826504">11 4482-6504</a> (línea fija)</span></div>
       <div class="r"><span>Dirección</span><span>Cerrito 2399, Lomas del Mirador, La Matanza, Buenos Aires</span></div>
       <div class="r"><span>Horarios</span><span>Lunes a viernes 8:30–12:30 y 14:00–18:00<br />Sábados 8:30–13:00</span></div>
       <div class="r"><span>Garantía</span><span>Sobre mano de obra</span></div>
       <div class="r"><span>Reputación</span><span>4,7 ★ en Google Maps · 173 reseñas</span></div>
-      <div class="r"><span>Redes</span><span>Instagram @parabrisaslaboutique</span></div>
+      <div class="r"><span>Redes</span><span><a href="https://www.instagram.com/parabrisaslaboutique/">Instagram @parabrisaslaboutique</a></span></div>
+      <!-- Web: cuando esté el dominio, agregar acá: <div class="r"><span>Web</span><span><a href="https://DOMINIO">DOMINIO</a></span></div> -->
     </div>
   </div>
   <div class="foot"><div>Gracias por su tiempo y consideración</div><div class="num">07 / 07</div></div>

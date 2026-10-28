@@ -24,12 +24,16 @@ import {
   Star,
   SunDim,
 } from 'lucide-react';
+import { mountPhotoTour } from './PhotoTour';
 import Lenis from 'lenis';
 import 'lenis/dist/lenis.css';
 
 const PHONE_LABEL = '11 5715-1222';
 const WA = `https://wa.me/5491157151222?text=${encodeURIComponent('¡Hola! Quería hacer una consulta por un trabajo.')}`;
 const TEL = 'tel:+541157151222';
+const PHONE_FIXED_LABEL = '11 4482-6504';
+const TEL_FIXED = 'tel:+541144826504';
+const WA_EMPRESAS = `https://wa.me/5491157151222?text=${encodeURIComponent('¡Hola! Somos una empresa o concesionaria y queríamos hacer una consulta.')}`;
 const IG = 'https://www.instagram.com/parabrisaslaboutique/';
 const MAIL = 'parabrisaslaboutique@hotmail.com';
 const ADDRESS = 'Cerrito 2399, Lomas del Mirador, La Matanza';
@@ -50,9 +54,9 @@ const SERVICES = [
 const GLASS_BRANDS = ['Saint-Gobain Sekurit', 'Fuyao', 'XYG', 'Favicur', 'Cristem'];
 
 const INSURERS = [
-  'Allianz', 'Answer', 'ATM', 'Chubb', 'Digna', 'Experta', 'La Equitativa', 'Federación Patronal',
+  'Allianz', 'Answer', 'ATM', 'La Caja', 'Chubb', 'Digna', 'Experta', 'La Equitativa', 'Federación Patronal',
   'Galeno', 'Galicia Seguros', 'La Holando', 'Meridional', 'Iaorana', 'Integrity', 'Mercantil Andina',
-  'Metropol', 'Nacional', 'Nivel', 'Paraná', 'Provincia', 'Providencia', 'Río Uruguay', 'Rivadavia',
+  'Metropol', 'Nación', 'Nivel', 'Paraná', 'Provincia', 'Providencia', 'Río Uruguay', 'Rivadavia',
   'Sancor', 'SMG', 'La Segunda', 'Segurcoop', 'San Cristóbal', 'Triunfo', 'Victoria', 'Zurich',
 ];
 
@@ -371,18 +375,19 @@ function Servicios() {
 function Taller() {
   const [ref, p] = useSection();
   const canvas = useRef<HTMLCanvasElement>(null);
-  useScene(canvas, p, () => import('./TallerScene').then((m) => m.mountTallerScene));
-  const titleO = useTransform(p, [0, 0.06], [1, 0]);
-  const cap1 = useTransform(p, [0.06, 0.12, 0.24, 0.3], [0, 1, 1, 0]);
-  const cap2 = useTransform(p, [0.7, 0.78, 0.9, 0.96], [0, 1, 1, 0]);
-  const sceneO = useTransform(p, [0.93, 1], [1, 0]);
+  useScene(canvas, p, () => Promise.resolve(mountPhotoTour));
+  // los tiempos de las fotos están en PhotoTour.ts (STEPS); acá solo los textos
+  const titleO = useTransform(p, [0, 0.04, 0.07], [1, 1, 0]);
+  const cap1 = useTransform(p, [0.1, 0.16, 0.26, 0.31], [0, 1, 1, 0]);
+  const cap2 = useTransform(p, [0.58, 0.64, 0.88, 0.95], [0, 1, 1, 0]);
+  const sceneO = useTransform(p, [0.95, 1], [1, 0]);
 
   return (
-    <section id="taller" ref={ref} className="relative h-[450vh]">
+    <section id="taller" ref={ref} className="relative h-[420vh]">
       <div className="sticky top-0 h-svh overflow-hidden">
-        <motion.canvas ref={canvas} style={{ opacity: sceneO }} aria-hidden className="absolute inset-0 h-full w-full" />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent to-ink/40" />
-        <motion.div style={{ opacity: titleO }} className="absolute inset-x-0 top-[14%] text-center will-change-[opacity]">
+        <motion.canvas ref={canvas} role="img" aria-label="Recorrido por las fotos reales del taller: la esquina, el portón y el salón con el stock de cristales" style={{ opacity: sceneO }} className="absolute inset-0 h-full w-full" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent via-45% to-transparent" />
+        <motion.div style={{ opacity: titleO }} className="absolute inset-x-0 bottom-[9%] text-center will-change-[opacity]">
           <Eyebrow>El taller</Eyebrow>
           <h2 className="font-display text-5xl font-bold md:text-7xl">Vení a conocernos.</h2>
         </motion.div>
@@ -394,34 +399,6 @@ function Taller() {
           <Eyebrow>Por dentro</Eyebrow>
           <p className="max-w-2xl font-display text-4xl font-bold md:text-6xl">Taller cubierto y stock propio de cristales.</p>
         </motion.div>
-      </div>
-    </section>
-  );
-}
-
-function TallerFotos() {
-  const fotos = [
-    { src: '/taller-frente.webp', alt: 'Frente del taller Parabrisas La Boutique', cap: 'El frente, sobre Cerrito', pos: 'object-[center_35%]' },
-    { src: '/taller-interior.webp', alt: 'Interior del taller con stock de cristales', cap: 'El salón y el stock de cristales', pos: 'object-center' },
-  ];
-  return (
-    <section className="relative px-6 pb-32">
-      <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-2">
-        {fotos.map((f, i) => (
-          <motion.figure
-            key={f.src}
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-15%' }}
-            transition={{ delay: i * 0.1, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="relative overflow-hidden rounded-3xl border border-white/10"
-          >
-            <img src={f.src} alt={f.alt} loading="lazy" className={`aspect-[4/5] w-full object-cover ${f.pos}`} />
-            <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/90 to-transparent p-6 text-sm uppercase tracking-[0.2em]">
-              {f.cap}
-            </figcaption>
-          </motion.figure>
-        ))}
       </div>
     </section>
   );
@@ -454,6 +431,36 @@ function Aseguradoras() {
           ))}
         </motion.div>
       ))}
+    </section>
+  );
+}
+
+function Empresas() {
+  return (
+    <section className="relative px-6 py-24">
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-15%' }}
+        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        className="mx-auto grid max-w-6xl items-center gap-10 rounded-3xl p-8 glass md:grid-cols-[1.4fr_1fr] md:p-14"
+      >
+        <div>
+          <Eyebrow>Empresas y concesionarias</Eyebrow>
+          <h2 className="font-display text-4xl font-bold md:text-5xl">También trabajamos para empresas y concesionarias.</h2>
+          <p className="mt-5 max-w-xl text-lg text-mute">
+            Si necesitás resolver cristales o cerrajería de tus vehículos, consultanos. Te respondemos por WhatsApp o por teléfono.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3">
+          <a href={WA_EMPRESAS} target="_blank" rel="noopener" className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 font-semibold text-ink hover:brightness-110">
+            Consultar por WhatsApp <ArrowRight size={18} />
+          </a>
+          <a href={TEL_FIXED} className="inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 glass hover:bg-white/10">
+            <Phone size={18} className="text-accent" /> Llamar al {PHONE_FIXED_LABEL}
+          </a>
+        </div>
+      </motion.div>
     </section>
   );
 }
@@ -494,6 +501,7 @@ function Proceso() {
 
 const FAQ = [
   { q: '¿Trabajan con mi seguro?', a: 'Somos prestadores de más de 30 aseguradoras, en forma directa o a través de intermediarios. Escribinos con los datos de tu póliza y te confirmamos cómo seguir según tu compañía.' },
+  { q: '¿Trabajan con empresas y concesionarias?', a: 'Sí. Si tenés una empresa o una concesionaria y querés consultar, escribinos por WhatsApp o llamanos y lo vemos.' },
   { q: '¿Cuánto tarda el cambio de un parabrisas?', a: 'Muchos trabajos se resuelven en el día. Depende de que tengamos el cristal de tu vehículo en stock o de cuánto tarde en llegar.' },
   { q: '¿Se puede reparar un impacto sin cambiar el parabrisas?', a: 'Depende del tamaño y la ubicación del impacto. Lo evaluamos y te decimos si conviene reparar o reemplazar.' },
   { q: '¿Hacen trabajos a domicilio?', a: 'Sí, según el tipo de intervención. Algunos trabajos conviene hacerlos en el taller; te lo indicamos al coordinar.' },
@@ -531,6 +539,7 @@ function Preguntas() {
 function Contacto() {
   const items = [
     { icon: Phone, label: 'Teléfono / WhatsApp', value: PHONE_LABEL, href: TEL },
+    { icon: Phone, label: 'Línea fija', value: PHONE_FIXED_LABEL, href: TEL_FIXED },
     { icon: Mail, label: 'Correo', value: MAIL, href: `mailto:${MAIL}` },
     { icon: MapPin, label: 'Dirección', value: ADDRESS, href: MAPS },
     { icon: Clock, label: 'Horarios', value: 'Lun a vie 8:30–12:30 y 14–18 · Sáb 8:30–13', href: undefined },
@@ -629,8 +638,8 @@ export default function App() {
         <Trayectoria />
         <Servicios />
         <Taller />
-        <TallerFotos />
         <Aseguradoras />
+        <Empresas />
         <Proceso />
         <Preguntas />
         <Contacto />

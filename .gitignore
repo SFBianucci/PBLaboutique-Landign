@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# fotos originales del cliente (las que se usan están procesadas en public/taller y presentacion/img)
+Fotos_Taller/
