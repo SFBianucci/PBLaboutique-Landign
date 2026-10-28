@@ -1,441 +1,572 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
+import { useEffect, useRef, type ReactNode } from 'react';
+import {
+  motion,
+  MotionConfig,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+  useTransform,
+  type MotionValue,
+} from 'motion/react';
+import {
+  ArrowRight,
+  ArrowUpDown,
+  Car,
+  Clock,
+  Crosshair,
+  Hash,
+  KeyRound,
+  Layers,
+  Mail,
+  MapPin,
+  Phone,
+  Plus,
+  Star,
+  SunDim,
+} from 'lucide-react';
 
-import { useState } from 'react';
-import { Navbar } from './components/Navbar';
-import { Select } from './components/Select';
-import { motion } from 'motion/react';
+const PHONE_LABEL = '11 5715-1222';
+const WA = `https://wa.me/5491157151222?text=${encodeURIComponent('¡Hola! Quería hacer una consulta por un trabajo.')}`;
+const TEL = 'tel:+541157151222';
+const IG = 'https://www.instagram.com/parabrisaslaboutique/';
+const MAIL = 'parabrisaslaboutique@hotmail.com';
+const ADDRESS = 'Cerrito 2399, Lomas del Mirador, La Matanza';
+const MAPS = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('Parabrisas La Boutique, Cerrito 2399, Lomas del Mirador')}`;
+// ponytail: copiado a mano de la ficha de Google; actualizar si cambia
+const RATING = { score: '4.7', count: 173 };
 
-const serviceOptions = [
-  { value: 'cristales', label: 'Cristales' },
-  { value: 'cerraduras', label: 'Cerraduras' },
-  { value: 'maquinas', label: 'Máquinas (Levanta vidrios)' },
-  { value: 'polarizados', label: 'Polarizados' },
-  { value: 'grabados', label: 'Grabados' },
+const SERVICES = [
+  { icon: Car, title: 'Parabrisas y lunetas', text: 'Colocación y reemplazo de cristales delanteros y traseros.' },
+  { icon: Layers, title: 'Cristales laterales', text: 'Puertas, ventiletes y demás piezas de cristalería automotor.' },
+  { icon: Crosshair, title: 'Reparación de impactos', text: 'Tratamiento de impactos en parabrisas, según evaluación.' },
+  { icon: KeyRound, title: 'Cerrajería', text: 'Cerraduras, llaves y mecanismos de apertura del vehículo.' },
+  { icon: ArrowUpDown, title: 'Levantavidrios', text: 'Reparación y reemplazo de mecanismos alzacristales.' },
+  { icon: SunDim, title: 'Polarizados', text: 'Colocación de láminas polarizadas.' },
+  { icon: Hash, title: 'Grabados', text: 'Grabado de patente en todos los cristales.' },
 ];
 
-export default function App() {
-  const [selectedService, setSelectedService] = useState('');
+const GLASS_BRANDS = ['Saint-Gobain Sekurit', 'Fuyao', 'XYG', 'Favicur', 'Cristem'];
+
+const INSURERS = [
+  'Allianz', 'Answer', 'ATM', 'Chubb', 'Digna', 'Experta', 'La Equitativa', 'Federación Patronal',
+  'Galeno', 'Galicia Seguros', 'La Holando', 'Meridional', 'Iaorana', 'Integrity', 'Mercantil Andina',
+  'Metropol', 'Nacional', 'Nivel', 'Paraná', 'Provincia', 'Providencia', 'Río Uruguay', 'Rivadavia',
+  'Sancor', 'SMG', 'La Segunda', 'Segurcoop', 'San Cristóbal', 'Triunfo', 'Victoria', 'Zurich',
+];
+
+const STEPS = [
+  { title: 'Nos contactás', text: 'Por WhatsApp o teléfono, con los datos de tu póliza o siniestro.' },
+  { title: 'Coordinamos', text: 'Hablamos con la compañía y conseguimos el cristal con nuestros proveedores.' },
+  { title: 'Colocamos', text: 'En el taller o a domicilio, según el trabajo. Muchas veces, en el día.' },
+  { title: 'Garantía', text: 'Todos los trabajos tienen garantía sobre la mano de obra.' },
+];
+
+
+function useSection(offset: any = ['start start', 'end end']) {
+  const ref = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset });
+  // El spring suaviza el scroll y además evita la aceleración nativa de Motion (ScrollTimeline),
+  // que ignora los rangos de useTransform con target + offset.
+  const smooth = useSpring(scrollYProgress, { stiffness: 400, damping: 60, restDelta: 0.0001 });
+  return [ref, smooth] as const;
+}
+
+function Eyebrow({ children }: { children: ReactNode }) {
+  return (
+    <span className="mb-5 inline-flex items-center gap-3 text-xs font-medium uppercase tracking-[0.35em] text-accent">
+      <span className="h-px w-8 bg-accent" />
+      {children}
+    </span>
+  );
+}
+
+function Backdrop() {
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll();
+  const p = useSpring(scrollYProgress, { stiffness: 50, damping: 20 });
+  const x1 = useTransform(p, [0, 1], ['-20vw', '50vw']);
+  const y1 = useTransform(p, [0, 1], ['-10vh', '70vh']);
+  const x2 = useTransform(p, [0, 1], ['60vw', '-10vw']);
+  const y2 = useTransform(p, [0, 1], ['50vh', '-10vh']);
+  const imgScale = useTransform(p, [0, 1], [1.1, 1.5]);
+  const imgOpacity = useTransform(p, [0, 0.2, 0.5, 0.8, 1], [0.35, 0.12, 0.22, 0.1, 0.25]);
 
   return (
-    <div className="min-h-screen bg-background text-on-background font-body selection:bg-primary selection:text-on-primary">
-      <Navbar />
+    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-ink">
+      <motion.img
+        src="/fondo-blur.webp"
+        alt=""
+        style={reduce ? { opacity: 0.18 } : { scale: imgScale, opacity: imgOpacity }}
+        className="absolute inset-0 h-full w-full object-cover will-change-transform"
+      />
+      <motion.div
+        style={reduce ? undefined : { x: x1, y: y1 }}
+        className="absolute h-[55vmax] w-[55vmax] bg-[radial-gradient(circle,rgb(61_220_132/0.16),transparent_65%)] will-change-transform"
+      />
+      <motion.div
+        style={reduce ? undefined : { x: x2, y: y2 }}
+        className="absolute h-[65vmax] w-[65vmax] bg-[radial-gradient(circle,rgb(0_91_46/0.5),transparent_65%)] will-change-transform"
+      />
+      <div className="grid-lines absolute inset-0" />
+      <div className="absolute inset-0 bg-gradient-to-b from-ink/30 via-transparent to-ink/80" />
+      <div className="grain absolute inset-0" />
+    </div>
+  );
+}
 
-      {/* Hero Section */}
-      <section className="relative h-screen flex items-center justify-center overflow-hidden">
-        {/* Full-bleed background image */}
-        <div className="absolute inset-0 z-0">
-          <motion.img
-            initial={{ scale: 1.05, opacity: 0 }}
-            animate={{ scale: 1, opacity: 0.4 }}
-            transition={{ duration: 1.5, ease: "easeOut" }}
-            alt="Detalle de auto de lujo"
-            className="w-full h-full object-cover grayscale"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2pMuxG9SMASxsbdyAPmJwaDH2574gN6zlSCfH0fojvAEwmyzDC35XVEucvP9D3EmAO4QpAUya5BXRE0o7aaJTd8L7plCXXsBwq1vE75YtEA3SNwwLQI7My2RzKZm_fzhf6FOUg4lyx8kvzrAITpPvfDgUqb726URJ1OTwH6J6b5KYJ70G08dsII_RtLSKJz6ROKxJZdIvweoBh_8Tl7ijE-LkhGsu2mNtNf34vnhdl3iMxmYmI9TLMpBaOjTeHLv4npAafEUB6PA"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/40 to-transparent"></div>
+function Nav() {
+  const { scrollYProgress } = useScroll();
+  return (
+    <header className="fixed inset-x-0 top-0 z-50">
+      <motion.div style={{ scaleX: scrollYProgress }} className="h-0.5 origin-left bg-accent" />
+      <nav className="mx-auto mt-3 flex max-w-6xl items-center justify-between rounded-2xl px-4 py-3 glass backdrop-blur-xl md:mx-6 lg:mx-auto">
+        <a href="#top" className="flex items-center gap-3">
+          <img src="/logo.svg" alt="" className="h-8 w-8" />
+          <span className="font-display text-sm font-bold uppercase tracking-wider">
+            Parabrisas <span className="text-accent">La Boutique</span>
+          </span>
+        </a>
+        <div className="hidden items-center gap-8 text-sm text-mute md:flex">
+          <a href="#servicios" className="hover:text-white">Servicios</a>
+          <a href="#taller" className="hover:text-white">El taller</a>
+          <a href="#aseguradoras" className="hover:text-white">Aseguradoras</a>
+          <a href="#contacto" className="hover:text-white">Contacto</a>
         </div>
+        <a href={WA} target="_blank" rel="noopener" className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-ink hover:brightness-110">
+          WhatsApp
+        </a>
+      </nav>
+    </header>
+  );
+}
 
-        {/* Centered content */}
-        <div className="relative z-10 text-center px-6 max-w-5xl">
-          <motion.span
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="block font-label uppercase tracking-[0.6em] text-primary text-xs mb-6"
-          >
-            Automotive Glass Boutique
-          </motion.span>
+function Hero() {
+  const [ref, p] = useSection();
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const contentO = useTransform(p, [0, 0.12], [1, 0]);
+  const contentS = useTransform(p, [0, 0.15], [1, 0.9]);
+  const contentBlur = useTransform(p, [0, 0.12], ['blur(0px)', 'blur(14px)']);
+  const msgO = useTransform(p, [0.2, 0.28, 0.5, 0.57], [0, 1, 1, 0]);
+  const msgY = useTransform(p, [0.2, 0.28], [40, 0]);
+  const fixO = useTransform(p, [0.42, 0.48], [0, 1]);
+  const msg2O = useTransform(p, [0.7, 0.78, 0.88, 0.96], [0, 1, 1, 0]);
+  const hintO = useTransform(p, [0, 0.03], [1, 0]);
+  const sceneO = useTransform(p, [0.9, 1], [1, 0]); // funde a negro para empalmar con la trayectoria
+
+  useEffect(() => {
+    // three.js se carga aparte para no frenar la primera pintura
+    let cleanup: (() => void) | undefined;
+    let alive = true;
+    import('./GlassScene').then(({ mountGlassScene }) => {
+      if (!alive) return;
+      try {
+        cleanup = mountGlassScene(canvas.current!, () => p.get());
+      } catch {
+        // ponytail: sin WebGL queda el fondo blurreado de Backdrop, no hace falta otro fallback
+      }
+    });
+    return () => {
+      alive = false;
+      cleanup?.();
+    };
+  }, [p]);
+
+  return (
+    <section id="top" ref={ref} className="relative h-[450vh]">
+      <div className="sticky top-0 flex h-svh items-center justify-center overflow-hidden px-6">
+        <motion.canvas ref={canvas} style={{ opacity: sceneO }} aria-hidden className="absolute inset-0 h-full w-full" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,var(--color-ink)_100%)]" />
+
+        <motion.div style={{ opacity: contentO, scale: contentS, filter: contentBlur }} className="relative max-w-5xl text-center">
+          <motion.img
+            src="/logo.svg"
+            alt="Logo Parabrisas La Boutique"
+            initial={{ opacity: 0, scale: 0.6, rotate: -12 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+            className="mx-auto mb-8 h-20 w-20 md:h-24 md:w-24"
+          />
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.8 }}>
+            <Eyebrow>Cristalería y cerrajería automotor · Desde 1997</Eyebrow>
+          </motion.div>
           <motion.h1
-            initial={{ y: 30, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="font-headline text-5xl md:text-8xl font-extrabold tracking-tighter text-on-surface mb-8 leading-tight text-glow"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35, duration: 0.9 }}
+            className="font-display text-6xl font-bold uppercase leading-[0.9] tracking-tight md:text-9xl"
           >
-            Claridad Cristalina,<br />Servicio de Precisión
+            Parabrisas
+            <br />
+            <span className="bg-gradient-to-r from-accent to-emerald-200 bg-clip-text text-transparent">La Boutique</span>
           </motion.h1>
           <motion.p
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            className="font-body text-on-surface-variant text-lg md:text-xl max-w-2xl mx-auto mb-12 font-light"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.8 }}
+            className="mx-auto mt-8 max-w-xl text-lg text-mute"
           >
-            Elevamos el estándar de mantenimiento automotriz con ingeniería de precisión y acabados de lujo para los conductores más exigentes.
+            Parabrisas, lunetas, cristales laterales, cerrajería y levantavidrios. Taller cubierto en Lomas del Mirador,
+            prestador de más de 30 aseguradoras.
           </motion.p>
           <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.8 }}
-            className="flex flex-col md:flex-row gap-4 justify-center"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.65, duration: 0.8 }}
+            className="mt-10 flex flex-wrap items-center justify-center gap-4"
           >
-            <button className="bg-primary text-on-primary px-10 py-4 rounded-sm font-headline font-extrabold uppercase text-sm tracking-widest hover:brightness-110 transition-all active:scale-95">
-              Agendar Cita
-            </button>
-            <button className="border border-outline-variant text-on-surface px-10 py-4 rounded-sm font-headline font-extrabold uppercase text-sm tracking-widest hover:bg-surface-container-low transition-all active:scale-95">
-              Ver Servicios
-            </button>
+            <a href={WA} target="_blank" rel="noopener" className="inline-flex items-center gap-2 rounded-xl bg-accent px-6 py-3.5 font-semibold text-ink hover:brightness-110">
+              Pedí tu presupuesto <ArrowRight size={18} />
+            </a>
+            <a href={MAPS} target="_blank" rel="noopener" className="inline-flex items-center gap-2 rounded-xl px-5 py-3.5 glass hover:bg-white/10">
+              <Star size={16} className="fill-accent text-accent" />
+              {RATING.score} en Google · {RATING.count} reseñas
+            </a>
           </motion.div>
-        </div>
-
-        {/* Scroll indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.5 }}
-          transition={{ duration: 1, delay: 1.2 }}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-        >
-          <span className="font-label text-[10px] tracking-[0.3em] uppercase text-on-surface-variant">Deslizar</span>
-          <div className="w-[1px] h-12 bg-primary"></div>
         </motion.div>
-      </section>
 
-      {/* Services Section */}
-      <section className="py-32 bg-surface relative" id="servicios">
-        {/* Decorative background glow */}
-        <div className="absolute top-40 left-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none"></div>
-        
-        <div className="max-w-7xl mx-auto px-10 relative z-10">
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.8 }}
-            className="flex flex-col md:flex-row justify-between items-end mb-20 gap-8"
-          >
-            <div className="max-w-xl">
-              <h2 className="font-headline text-4xl md:text-5xl font-bold tracking-tight mb-6 uppercase">Ingeniería de Excelencia</h2>
-              <p className="text-on-surface-variant font-light">Un conjunto de servicios especializados diseñados para los propietarios de vehículos más exigentes.</p>
+        <motion.div style={{ opacity: msgO, y: msgY }} className="pointer-events-none absolute bottom-[12%] max-w-4xl px-6 text-center">
+          <p className="font-display text-5xl font-bold leading-tight md:text-7xl">Cada impacto tiene solución.</p>
+          <motion.p style={{ opacity: fixO }} className="mt-4 text-xl text-accent md:text-2xl">
+            Y la dejamos como nueva.
+          </motion.p>
+        </motion.div>
+
+        <motion.div style={{ opacity: msg2O }} className="pointer-events-none absolute max-w-4xl px-6 text-center">
+          <p className="font-display text-5xl font-bold leading-tight md:text-7xl">Cristal por cristal,</p>
+          <p className="mt-2 font-display text-5xl font-bold leading-tight text-accent md:text-7xl">desde 1997.</p>
+        </motion.div>
+
+        <motion.div style={{ opacity: hintO }} className="absolute bottom-8 flex flex-col items-center gap-2 text-xs uppercase tracking-[0.3em] text-mute">
+          Deslizá
+          <motion.span animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 1.6 }} className="h-8 w-px bg-accent" />
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+function Fade({ p, range, children, className = '' }: { p: MotionValue<number>; range: [number, number]; children: ReactNode; className?: string }) {
+  const opacity = useTransform(p, range, [0.12, 1]);
+  const y = useTransform(p, range, [24, 0]);
+  return <motion.div style={{ opacity, y }} className={className}>{children}</motion.div>;
+}
+
+function Trayectoria() {
+  const [ref, p] = useSection();
+  const year = useTransform(p, [0, 0.55], [1997, new Date().getFullYear()]);
+  const yearText = useTransform(year, (v) => Math.round(v).toString());
+  const years = useTransform(year, (v) => `${Math.round(v) - 1997} años de oficio`);
+  const bar = useTransform(p, [0, 0.55], [0, 1]);
+
+  return (
+    <section ref={ref} className="relative h-[200vh]">
+      <div className="sticky top-0 flex h-svh items-center">
+        <div className="mx-auto grid max-w-6xl gap-12 px-6 md:grid-cols-2 md:items-center">
+          <div>
+            <Eyebrow>Quiénes somos</Eyebrow>
+            <motion.div className="font-display text-8xl font-bold leading-none tracking-tighter tabular-nums sm:text-9xl">
+              {yearText}
+            </motion.div>
+            <div className="mt-4 h-px w-full bg-white/10">
+              <motion.div style={{ scaleX: bar }} className="h-px origin-left bg-accent" />
             </div>
-            <div className="font-headline text-8xl font-black text-surface-container-high opacity-10 leading-none select-none">01</div>
-          </motion.div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              { icon: 'directions_car', title: 'Cristales', desc: 'Reemplazo y reparación de cristales para todo tipo de vehículos con acabados de fábrica.' },
-              { icon: 'swap_horiz', title: 'Colocación y Extracción', desc: 'Instalación y extracción profesional de parabrisas y otros cristales garantizando un sellado hermético.' },
-              { icon: 'lock', title: 'Cerraduras', desc: 'Reparación y reemplazo de cerraduras dañadas o trabadas, devolviendo la seguridad total a su vehículo.' },
-              { icon: 'settings', title: 'Mecanismos', desc: 'Solución de fallas en mecanismos levanta vidrios y motores de puertas con repuestos originales.' },
-              { icon: 'wb_sunny', title: 'Polarizados', desc: 'Aplicación profesional de láminas con diferentes tonalidades para privacidad y rechazo de calor.' },
-              { icon: 'fingerprint', title: 'Grabados', desc: 'Grabado de cristales con código identificatorio bajo normativa vigente para mayor seguridad.' },
-            ].map((service, index) => (
-              <motion.div 
-                key={service.title}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="group relative p-10 bg-surface-container-low rounded-lg transition-all duration-500 hover:-translate-y-2 hover:bg-surface-container-high hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] overflow-hidden flex flex-col"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-0 bg-primary group-hover:h-full transition-all duration-500 rounded-full"></div>
-                
-                <div className="w-16 h-16 rounded-xl bg-surface flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500 relative z-10">
-                  <span className="material-symbols-outlined text-3xl text-primary">{service.icon}</span>
-                </div>
-                <h3 className="font-headline text-2xl font-bold mb-4 tracking-tight relative z-10">{service.title}</h3>
-                <p className="text-on-surface-variant text-sm leading-relaxed relative z-10 flex-1">{service.desc}</p>
-              </motion.div>
-            ))}
+            <motion.p className="mt-4 text-lg text-accent">{years}</motion.p>
+          </div>
+          <div className="space-y-6 text-lg leading-relaxed md:text-xl">
+            <Fade p={p} range={[0.1, 0.3]}>
+              <p className="font-display text-3xl font-semibold leading-snug md:text-4xl">Una trayectoria construida en el oficio.</p>
+            </Fade>
+            <Fade p={p} range={[0.25, 0.45]}>
+              <p className="text-mute">
+                Desde 1997 acompañamos a particulares, empresas y aseguradoras en todo lo que tenga que ver con cristales y cerrajería del auto.
+              </p>
+            </Fade>
+            <Fade p={p} range={[0.4, 0.6]}>
+              <p className="text-mute">
+                Escuchamos, evaluamos el trabajo y damos una solución acorde a cada caso. Así sostuvimos relaciones comerciales durante años.
+              </p>
+            </Fade>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
+  );
+}
 
-      {/* Why Us / Clarity Section */}
-      <section className="py-32 bg-surface-container-low relative overflow-hidden" id="galeria">
-        <div className="absolute top-0 right-0 w-1/3 h-full bg-primary-container/10 blur-[120px]"></div>
-        <div className="max-w-7xl mx-auto px-10 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-            <motion.div 
-              initial={{ opacity: 0, x: -50 }}
+function Servicios() {
+  const card = (s: (typeof SERVICES)[number], i: number, copy: boolean) => (
+    <article key={`${copy}-${s.title}`} aria-hidden={copy || undefined} className="pr-6">
+      <div className="flex h-[22rem] w-[78vw] flex-col justify-between rounded-3xl p-8 glass transition-colors hover:bg-white/[0.07] md:w-[24rem]">
+        <div className="flex items-start justify-between">
+          <span className="grid h-14 w-14 place-items-center rounded-2xl bg-accent/10 text-accent ring-1 ring-accent/20">
+            <s.icon size={26} />
+          </span>
+          <span className="font-display text-5xl font-bold text-outline">{String(i + 1).padStart(2, '0')}</span>
+        </div>
+        <div>
+          <h3 className="font-display text-2xl font-semibold">{s.title}</h3>
+          <p className="mt-3 text-mute">{s.text}</p>
+        </div>
+      </div>
+    </article>
+  );
+
+  return (
+    <section id="servicios" className="relative py-32">
+      <div className="mx-auto mb-12 w-full max-w-6xl px-6">
+        <Eyebrow>Servicios</Eyebrow>
+        <h2 className="font-display text-4xl font-bold md:text-6xl">Todo lo que tu auto necesita en cristales.</h2>
+      </div>
+      {/* Cinta infinita: la lista va duplicada y la animación corre -50% (ver .marquee en index.css) */}
+      <div className="marquee-mask overflow-hidden motion-reduce:overflow-x-auto">
+        <div className="marquee flex w-max">
+          {SERVICES.map((s, i) => card(s, i, false))}
+          {SERVICES.map((s, i) => card(s, i, true))}
+        </div>
+      </div>
+      <div className="mx-auto mt-12 flex w-full max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-6">
+        <span className="text-xs uppercase tracking-[0.25em] text-mute">Cristales de primeras marcas</span>
+        {GLASS_BRANDS.map((b) => (
+          <span key={b} className="text-sm text-white/70">{b}</span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Taller() {
+  const [ref, p] = useSection();
+  // En vertical el recorte inicial casi no toca los costados, si no queda una franja angosta
+  const start = window.innerWidth < 768 ? 'inset(18% 6% 14% 6% round 24px)' : 'inset(24% 26% 12% 26% round 32px)';
+  const clip = useTransform(p, [0, 0.4], [start, 'inset(0% 0% 0% 0% round 0px)']);
+  const frenteS = useTransform(p, [0, 0.4], [1.12, 1]);
+  const titleO = useTransform(p, [0, 0.25], [1, 0]);
+  const cap1 = useTransform(p, [0.3, 0.42, 0.55, 0.62], [0, 1, 1, 0]);
+  const interiorO = useTransform(p, [0.55, 0.7], [0, 1]);
+  const interiorS = useTransform(p, [0.55, 1], [1.2, 1]);
+  const cap2 = useTransform(p, [0.7, 0.82], [0, 1]);
+
+  return (
+    <section id="taller" ref={ref} className="relative h-[300vh]">
+      <div className="sticky top-0 h-svh overflow-hidden">
+        <motion.h2 style={{ opacity: titleO }} className="absolute inset-x-0 top-[9%] text-center font-display text-5xl font-bold uppercase md:text-8xl">
+          El taller
+        </motion.h2>
+        <motion.div style={{ clipPath: clip }} className="absolute inset-0">
+          <motion.img src="/taller-frente.webp" alt="Frente del taller Parabrisas La Boutique" style={{ scale: frenteS }} className="h-full w-full object-cover object-[center_40%]" />
+          <motion.img src="/taller-interior.webp" alt="Interior del taller con stock de cristales" style={{ opacity: interiorO, scale: interiorS }} className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/20 to-transparent" />
+        </motion.div>
+        <motion.div style={{ opacity: cap1 }} className="absolute inset-x-0 bottom-12 mx-auto max-w-6xl px-6">
+          <Eyebrow>Lomas del Mirador</Eyebrow>
+          <p className="max-w-2xl font-display text-4xl font-bold md:text-6xl">Cerrito 2399, esquina. Fácil de llegar, con entrada de vehículos.</p>
+        </motion.div>
+        <motion.div style={{ opacity: cap2 }} className="absolute inset-x-0 bottom-12 mx-auto max-w-6xl px-6">
+          <Eyebrow>Por dentro</Eyebrow>
+          <p className="max-w-2xl font-display text-4xl font-bold md:text-6xl">Taller cubierto y stock de cristales propio.</p>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+function Aseguradoras() {
+  const [ref, p] = useSection(['start end', 'end start']);
+  const x1 = useTransform(p, [0, 1], ['0%', '-35%']);
+  const x2 = useTransform(p, [0, 1], ['-35%', '0%']);
+  const half = Math.ceil(INSURERS.length / 2);
+  const rows = [INSURERS.slice(0, half), INSURERS.slice(half)];
+
+  return (
+    <section id="aseguradoras" ref={ref} className="relative overflow-hidden py-32">
+      <div className="mx-auto mb-16 max-w-6xl px-6">
+        <Eyebrow>Aseguradoras</Eyebrow>
+        <h2 className="max-w-3xl font-display text-4xl font-bold md:text-6xl">
+          Prestadores de más de <span className="text-accent">30 compañías</span>.
+        </h2>
+        <p className="mt-6 max-w-2xl text-lg text-mute">
+          Atendemos asegurados de forma directa y a través de intermediarios. Si tu seguro cubre cristales, coordinamos todo.
+        </p>
+      </div>
+      {rows.map((row, r) => (
+        <motion.div key={r} style={{ x: r ? x2 : x1 }} className="flex w-max gap-12 py-4 whitespace-nowrap">
+          {[...row, ...row].map((name, i) => (
+            <span key={i} className="font-display text-5xl font-bold uppercase text-outline transition-colors hover:text-accent md:text-7xl">
+              {name}
+            </span>
+          ))}
+        </motion.div>
+      ))}
+    </section>
+  );
+}
+
+function Proceso() {
+  const [ref, p] = useSection(['start 0.7', 'end 0.6']);
+  return (
+    <section ref={ref} className="relative px-6 py-32">
+      <div className="mx-auto grid max-w-6xl gap-16 md:grid-cols-2">
+        <div className="md:sticky md:top-32 md:self-start">
+          <Eyebrow>Cómo trabajamos</Eyebrow>
+          <h2 className="font-display text-4xl font-bold md:text-6xl">Del siniestro al auto listo, sin vueltas.</h2>
+        </div>
+        <ol className="relative space-y-16 pl-10">
+          <span className="absolute left-0 top-2 h-full w-px bg-white/10" />
+          <motion.span style={{ scaleY: p }} className="absolute left-0 top-2 h-full w-px origin-top bg-accent" />
+          {STEPS.map((s, i) => (
+            <motion.li
+              key={s.title}
+              initial={{ opacity: 0.25, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.8 }}
+              viewport={{ margin: '-40% 0px -40% 0px' }}
+              transition={{ duration: 0.5 }}
               className="relative"
             >
-              <div className="aspect-[4/5] rounded-lg overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.4)] relative">
-                <img alt="Primer plano de reparación de parabrisas" className="w-full h-full object-cover grayscale brightness-75 hover:grayscale-0 transition-all duration-700 hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDSH1eH9Cd_0wDqQ-275tKAFIH8vl4THr0LArhsmZh9JPVM1EHABjK0a2dubDJkYn5mxNF4lFHiKDQnh-uhA9sMTFFQ3lJsY2FlupK_to72Ex0AKv8nr5Y5JMrlFohhN8qiruORCo2m3ZpglD8WUFWabPDaqRLhJisa3bga4g1_1-D8J-pnS9GG7k1snDo82VHOYFSz4JrPX3lB-DG_3uZWnJsz6TLRU7oaGxZ7EimXxNfC5encGSeoVLp26AWRx3oNwrMc0ZjcUVc" />
-                <div className="absolute inset-0 bg-gradient-to-t from-surface to-transparent opacity-60"></div>
-                <div className="absolute bottom-8 left-8 right-8 p-6 glass-panel border-t border-outline-variant/20 rounded-lg backdrop-blur-md">
-                  <h4 className="font-headline font-bold text-lg mb-2">El Estándar de Claridad</h4>
-                  <p className="text-on-surface-variant text-xs leading-relaxed font-light">Cada vehículo se somete a una inspección óptica de 24 puntos antes de la entrega.</p>
-                </div>
-              </div>
-              <div className="absolute -top-10 -right-10 w-48 h-48 border border-primary/20 -z-10 rounded-full blur-xl"></div>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.8 }}
-            >
-              <span className="font-label text-primary uppercase tracking-[0.3em] text-[10px] mb-6 block">¿Por qué Boutique?</span>
-              <h2 className="font-headline text-4xl md:text-6xl font-extrabold tracking-tighter mb-10 leading-tight">DETALLE SIN<br />CONCESIONES.</h2>
-              <ul className="space-y-12">
-                <li className="flex gap-6 group">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-surface-container-highest flex items-center justify-center group-hover:bg-primary/20 transition-colors duration-300">
-                    <span className="material-symbols-outlined text-primary">verified_user</span>
-                  </div>
-                  <div>
-                    <h4 className="font-headline font-bold text-lg mb-2 group-hover:text-primary transition-colors duration-300">Adhesivos de Grado Aviación</h4>
-                    <p className="text-on-surface-variant text-sm font-light">Utilizamos agentes de unión premium que superan los estándares de seguridad, asegurando que su parabrisas mantenga la estructura.</p>
-                  </div>
-                </li>
-                <li className="flex gap-6 group">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-surface-container-highest flex items-center justify-center group-hover:bg-primary/20 transition-colors duration-300">
-                    <span className="material-symbols-outlined text-primary">precision_manufacturing</span>
-                  </div>
-                  <div>
-                    <h4 className="font-headline font-bold text-lg mb-2 group-hover:text-primary transition-colors duration-300">Técnicos Maestros</h4>
-                    <p className="text-on-surface-variant text-sm font-light">Con años de especialización en marcas de lujo, nuestro equipo entiende los matices de los cristales de alta gama.</p>
-                  </div>
-                </li>
-                <li className="flex gap-6 group">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-surface-container-highest flex items-center justify-center group-hover:bg-primary/20 transition-colors duration-300">
-                    <span className="material-symbols-outlined text-primary">workspace_premium</span>
-                  </div>
-                  <div>
-                    <h4 className="font-headline font-bold text-lg mb-2 group-hover:text-primary transition-colors duration-300">Conserjería Personalizada</h4>
-                    <p className="text-on-surface-variant text-sm font-light">Desde la gestión del seguro hasta el servicio móvil en sitio, su experiencia se maneja con el máximo cuidado "guante blanco".</p>
-                  </div>
-                </li>
-              </ul>
-            </motion.div>
-          </div>
-        </div>
-      </section>
+              <span className="absolute -left-[2.85rem] top-1 grid h-6 w-6 place-items-center rounded-full bg-ink text-xs text-accent ring-1 ring-accent">
+                {i + 1}
+              </span>
+              <h3 className="font-display text-3xl font-semibold">{s.title}</h3>
+              <p className="mt-3 text-lg text-mute">{s.text}</p>
+            </motion.li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  );
+}
 
-      {/* Testimonials Section */}
-      <section className="py-24 bg-surface-container-low relative overflow-hidden" id="reseñas">
-        <div className="absolute top-8 right-8 pointer-events-none">
-          <span className="font-headline text-[8rem] font-extrabold text-surface-container-high/50 leading-none select-none">02</span>
+const FAQ = [
+  { q: '¿Trabajan con mi seguro?', a: 'Somos prestadores de más de 30 aseguradoras, en forma directa o a través de intermediarios. Escribinos con los datos de tu póliza y te confirmamos cómo seguir según tu compañía.' },
+  { q: '¿Cuánto tarda el cambio de un parabrisas?', a: 'Muchos trabajos se resuelven en el día. Depende de que tengamos el cristal de tu vehículo en stock o de cuánto tarde en llegar.' },
+  { q: '¿Se puede reparar un impacto sin cambiar el parabrisas?', a: 'Depende del tamaño y la ubicación del impacto. Lo evaluamos y te decimos si conviene reparar o reemplazar.' },
+  { q: '¿Hacen trabajos a domicilio?', a: 'Sí, según el tipo de intervención. Algunos trabajos conviene hacerlos en el taller; te lo indicamos al coordinar.' },
+  { q: '¿Los trabajos tienen garantía?', a: 'Sí. Todos los trabajos tienen garantía sobre la mano de obra.' },
+  { q: '¿Qué horarios tienen?', a: 'Lunes a viernes de 8:30 a 12:30 y de 14 a 18. Sábados de 8:30 a 13. Estamos en Cerrito 2399, Lomas del Mirador.' },
+];
+
+function Preguntas() {
+  return (
+    <section className="relative px-6 py-32">
+      <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-[1fr_1.4fr]">
+        <div>
+          <Eyebrow>Preguntas frecuentes</Eyebrow>
+          <h2 className="font-display text-4xl font-bold md:text-6xl">Lo que más nos consultan.</h2>
+          <a href={WA} target="_blank" rel="noopener" className="mt-8 inline-flex items-center gap-2 text-accent hover:brightness-125">
+            ¿Otra duda? Escribinos <ArrowRight size={18} />
+          </a>
         </div>
-        <div className="max-w-7xl mx-auto px-8 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="flex items-end gap-12 mb-16"
-          >
-            <div className="shrink-0">
-              <h2 className="font-headline text-4xl font-extrabold tracking-tighter uppercase">Opiniones Elite</h2>
-              <div className="flex items-center gap-3 mt-3">
-                <div className="flex text-primary">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <span key={i} className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                  ))}
-                </div>
-                <span className="font-headline font-bold text-on-surface text-sm">4.9</span>
-                <span className="font-label text-[11px] text-on-surface-variant tracking-wide">— Promedio de 120+ reseñas</span>
+        <div className="border-t border-white/10">
+          {FAQ.map(({ q, a }) => (
+            <details key={q} className="group border-b border-white/10">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-6 font-display text-lg font-semibold md:text-xl [&::-webkit-details-marker]:hidden">
+                {q}
+                <Plus size={20} className="shrink-0 text-accent transition-transform duration-300 group-open:rotate-45" />
+              </summary>
+              <p className="-mt-2 pb-6 pr-10 text-mute">{a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Contacto() {
+  const items = [
+    { icon: Phone, label: 'Teléfono / WhatsApp', value: PHONE_LABEL, href: TEL },
+    { icon: Mail, label: 'Correo', value: MAIL, href: `mailto:${MAIL}` },
+    { icon: MapPin, label: 'Dirección', value: ADDRESS, href: MAPS },
+    { icon: Clock, label: 'Horarios', value: 'Lun a vie 8:30–12:30 y 14–18 · Sáb 8:30–13', href: undefined },
+  ];
+  return (
+    <section id="contacto" className="relative px-6 py-32">
+      <div className="mx-auto max-w-6xl">
+        <div className="grid gap-10 md:grid-cols-[1.1fr_1fr] md:items-end">
+          <div>
+            <Eyebrow>Contacto</Eyebrow>
+            <h2 className="font-display text-5xl font-bold md:text-7xl">Traé tu auto. Del resto nos ocupamos.</h2>
+          </div>
+          <a href={MAPS} target="_blank" rel="noopener" className="flex items-center gap-6 rounded-3xl p-8 glass hover:bg-white/[0.07]">
+            <div className="font-display text-6xl font-bold">{RATING.score}</div>
+            <div>
+              <div className="flex gap-1 text-accent">
+                {Array.from({ length: 5 }, (_, i) => <Star key={i} size={18} className="fill-accent" />)}
               </div>
+              <p className="mt-2 text-mute">{RATING.count} reseñas en Google Maps</p>
             </div>
-            <div className="h-[1px] flex-grow bg-outline-variant mb-2 hidden md:block"></div>
-          </motion.div>
+          </a>
         </div>
 
-        {/* Marquee carousel */}
-        <div className="relative">
-          {/* Fade edges */}
-          <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-surface-container-low to-transparent z-10 pointer-events-none"></div>
-          <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-surface-container-low to-transparent z-10 pointer-events-none"></div>
-
-          <div className="flex gap-6 animate-marquee">
-            {[...Array(2)].map((_, setIndex) => (
-              <div key={setIndex} className="flex gap-6 shrink-0">
-                {[
-                  { name: 'Carlos Rodríguez', role: 'Cliente Frecuente', text: '"La atención al detalle en el cambio del parabrisas de mi BMW fue impecable. Trabajo de nivel europeo."', stars: 5 },
-                  { name: 'Laura Martínez', role: 'Diseñadora', text: '"El polarizado técnico que instalaron cambió por completo la temperatura del habitáculo. Increíble servicio."', stars: 5 },
-                  { name: 'José González', role: 'Ingeniero', text: '"Me resolvieron un problema de cerradura que nadie podía arreglar. Verdaderos artesanos técnicos."', stars: 4 },
-                  { name: 'Ana Pérez', role: 'Arquitecta', text: '"Rápido, limpio y profesional. Me sorprendió el nivel de orden del taller. 100% recomendado."', stars: 5 },
-                  { name: 'Martín Suárez', role: 'Empresario', text: '"Gestionaron todo con mi seguro sin que yo tuviera que hacer nada. Servicio de primera clase absoluta."', stars: 5 },
-                  { name: 'Sofía Colombo', role: 'Médica', text: '"El grabado de patentes fue rápido y prolijo. Se nota que trabajan con estándares altos."', stars: 5 },
-                ].map((t) => (
-                  <div
-                    key={`${setIndex}-${t.name}`}
-                    className="glass-panel p-8 flex flex-col justify-between min-h-[280px] w-[350px] shrink-0 relative overflow-hidden border-t-2 border-primary/30"
-                  >
-                    {/* Decorative quote */}
-                    <span className="absolute -top-4 -right-2 font-headline text-[8rem] font-black text-primary/[0.07] leading-none select-none pointer-events-none">"</span>
-
-                    <div className="relative z-10">
-                      <div className="flex text-primary mb-6">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <span key={i} className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: `'FILL' ${i < t.stars ? 1 : 0}` }}>star</span>
-                        ))}
-                      </div>
-                      <p className="font-body text-on-surface italic font-light leading-relaxed">{t.text}</p>
-                    </div>
-                    <div className="mt-8 relative z-10 flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center">
-                        <span className="font-headline font-bold text-primary text-sm">{t.name.charAt(0)}</span>
-                      </div>
-                      <div>
-                        <p className="font-headline font-bold text-sm uppercase tracking-widest">{t.name}</p>
-                        <p className="font-label text-[10px] text-on-surface-variant uppercase tracking-[0.2em]">{t.role}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Contact Section */}
-      <section className="py-24 bg-surface" id="contacto">
-        <div className="max-w-7xl mx-auto px-8 relative z-10">
-
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.8 }}
-            className="flex flex-col md:flex-row justify-between items-end mb-20 gap-8"
-          >
-            <h2 className="font-headline text-5xl font-extrabold tracking-tighter uppercase">Ubicación Estratégica</h2>
-            <div className="font-headline text-8xl font-black text-surface-container-high opacity-10 leading-none select-none">03</div>
-          </motion.div>
-
-          {/* Info + Map */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.8 }}
-              className="space-y-10"
-            >
-              {[
-                { icon: 'location_on', title: 'Dirección', desc: 'Cerrito 2399, Lomas del Mirador\nBuenos Aires, Argentina' },
-                { icon: 'call', title: 'Teléfono Directo', desc: '+54 9 11 5715 1222' },
-                { icon: 'schedule', title: 'Horario Atelier', desc: 'Lunes a Viernes: 08:00 — 18:00\nSábados: 08:30 — 13:00' },
-              ].map((item) => (
-                <div key={item.title} className="flex items-start gap-6">
-                  <span className="material-symbols-outlined text-primary p-3 bg-primary-container rounded-sm">{item.icon}</span>
+        <div className="mt-14 grid gap-6 md:grid-cols-2">
+          <div className="space-y-3">
+            {items.map(({ icon: Icon, label, value, href }) => {
+              const body = (
+                <>
+                  <Icon size={20} className="mt-1 shrink-0 text-accent" />
                   <div>
-                    <p className="font-headline font-bold text-xl">{item.title}</p>
-                    <p className="font-body text-on-surface-variant font-light whitespace-pre-line">{item.desc}</p>
+                    <div className="text-xs uppercase tracking-[0.2em] text-mute">{label}</div>
+                    <div className="mt-1 text-lg">{value}</div>
                   </div>
-                </div>
-              ))}
-              <div className="flex flex-col sm:flex-row gap-4">
-                <a
-                  href="tel:+5491157151222"
-                  className="flex-1 bg-primary text-on-primary px-8 py-4 rounded-sm font-headline font-extrabold uppercase text-sm tracking-[0.2em] flex items-center justify-center gap-3 hover:scale-[1.02] transition-transform active:scale-95"
-                >
-                  <span className="material-symbols-outlined text-[20px]">call</span>
-                  Llamar Ahora
+                </>
+              );
+              return href ? (
+                <a key={label} href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener" className="flex gap-4 rounded-2xl p-5 glass hover:bg-white/[0.07]">
+                  {body}
                 </a>
-                <a
-                  href="https://www.google.com/maps/dir//Cerrito+2399,+B1752+Lomas+del+Mirador,+Provincia+de+Buenos+Aires"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 border border-outline-variant/40 text-on-surface px-8 py-4 rounded-sm font-headline font-extrabold uppercase text-sm tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-surface-container-low transition-all active:scale-95"
-                >
-                  <span className="material-symbols-outlined text-[20px]">directions</span>
-                  Cómo Llegar
-                </a>
-              </div>
-            </motion.div>
-
-            {/* Map */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="h-[500px] w-full relative overflow-hidden rounded-sm"
-            >
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3281.332303028212!2d-58.53678382343272!3d-34.67154216108151!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x95bcc8e4d8542c55%3A0x62957f00d8b76543!2sCerrito%202399%2C%20B1752%20Lomas%20del%20Mirador%2C%20Provincia%20de%20Buenos%20Aires!5e0!3m2!1sen!2sar!4v1710892000000!5m2!1sen!2sar"
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen={false}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                className="absolute inset-0 grayscale contrast-125 brightness-75"
-              ></iframe>
-              <div className="absolute inset-0 bg-primary/10 mix-blend-overlay pointer-events-none"></div>
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-                <div className="relative">
-                  <div className="w-12 h-12 bg-primary/20 rounded-full animate-ping absolute"></div>
-                  <div className="w-12 h-12 bg-primary/40 rounded-full flex items-center justify-center relative z-10">
-                    <span className="material-symbols-outlined text-on-primary" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Booking Form */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="mt-16"
-          >
-            <div className="glass-panel p-8 md:p-12 rounded-sm">
-              <h3 className="font-headline text-2xl font-bold tracking-tight mb-10 uppercase">Reservar Turno</h3>
-              <form className="space-y-8" onSubmit={(e) => {
-                e.preventDefault();
-                const fd = new FormData(e.target as HTMLFormElement);
-                const msg = `Hola, quiero reservar un turno.\n\nNombre: ${fd.get('nombre')}\nVehículo: ${fd.get('vehiculo')} (${fd.get('anio')})\nSeguro: ${fd.get('seguro') || 'No especificado'}\nServicio: ${selectedService || 'No especificado'}\nConsulta: ${fd.get('mensaje')}`;
-                window.open(`https://wa.me/5491157151222?text=${encodeURIComponent(msg)}`, '_blank');
-              }}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  <input name="nombre" className="w-full bg-transparent border-0 border-b border-outline-variant/40 py-4 focus:ring-0 focus:border-primary transition-all font-body text-lg text-on-surface placeholder:text-placeholder outline-none" placeholder="Nombre completo" type="text" required />
-                  <input name="vehiculo" className="w-full bg-transparent border-0 border-b border-outline-variant/40 py-4 focus:ring-0 focus:border-primary transition-all font-body text-lg text-on-surface placeholder:text-placeholder outline-none" placeholder="Vehículo (Marca y Modelo)" type="text" required />
-                  <input name="anio" className="w-full bg-transparent border-0 border-b border-outline-variant/40 py-4 focus:ring-0 focus:border-primary transition-all font-body text-lg text-on-surface placeholder:text-placeholder outline-none" placeholder="Año" type="text" required />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  <input name="seguro" className="w-full bg-transparent border-0 border-b border-outline-variant/40 py-4 focus:ring-0 focus:border-primary transition-all font-body text-lg text-on-surface placeholder:text-placeholder outline-none" placeholder="Compañía de seguro (Opcional)" type="text" />
-                  <Select
-                    options={serviceOptions}
-                    placeholder="Tipo de servicio"
-                    value={selectedService}
-                    onChange={setSelectedService}
-                  />
-                  <input name="mensaje" className="w-full bg-transparent border-0 border-b border-outline-variant/40 py-4 focus:ring-0 focus:border-primary transition-all font-body text-lg text-on-surface placeholder:text-placeholder outline-none" placeholder="¿En qué podemos ayudarte?" type="text" required />
-                </div>
-                <div className="flex justify-end pt-4">
-                  <button className="group inline-flex items-center justify-center gap-4 px-12 py-5 bg-[#25D366] text-white rounded-sm font-headline font-extrabold uppercase text-sm tracking-[0.2em] transition-all hover:scale-[1.02] active:scale-95 hover:shadow-[0_0_30px_rgba(37,211,102,0.3)]" type="submit">
-                    <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                    Reservar por WhatsApp
-                  </button>
-                </div>
-              </form>
+              ) : (
+                <div key={label} className="flex gap-4 rounded-2xl p-5 glass">{body}</div>
+              );
+            })}
+            <div className="flex flex-wrap gap-3 pt-3">
+              <a href={WA} target="_blank" rel="noopener" className="inline-flex items-center gap-2 rounded-xl bg-accent px-6 py-3.5 font-semibold text-ink hover:brightness-110">
+                Escribinos por WhatsApp <ArrowRight size={18} />
+              </a>
+              <a href={IG} target="_blank" rel="noopener" className="rounded-xl px-6 py-3.5 glass hover:bg-white/10">
+                @parabrisaslaboutique
+              </a>
             </div>
-          </motion.div>
-
+          </div>
+          <iframe
+            title="Ubicación de Parabrisas La Boutique"
+            src={`https://maps.google.com/maps?q=${encodeURIComponent('Cerrito 2399, Lomas del Mirador, Buenos Aires')}&z=16&output=embed`}
+            loading="lazy"
+            className="map min-h-[22rem] w-full rounded-3xl border border-white/10"
+          />
         </div>
-      </section>
+      </div>
+    </section>
+  );
+}
 
-      {/* Footer */}
-      <footer className="bg-surface-container-low w-full py-20 px-12">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="text-primary font-bold tracking-widest uppercase flex items-center gap-3">
-            <img src="/logo.svg" alt="Parabrisas la Boutique" className="w-8 h-8" />
-            Parabrisas la Boutique
-          </div>
-          <div className="flex flex-wrap justify-center gap-8">
-            <a className="font-body text-[13px] tracking-wide text-muted hover:text-primary transition-colors duration-300" href="#">Política de Privacidad</a>
-            <a className="font-body text-[13px] tracking-wide text-muted hover:text-primary transition-colors duration-300" href="#">Términos de Servicio</a>
-            <a className="font-body text-[13px] tracking-wide text-muted hover:text-primary transition-colors duration-300" href="#">Soporte WhatsApp</a>
-            <a className="font-body text-[13px] tracking-wide text-muted hover:text-primary transition-colors duration-300" href="#">Guía de Mantenimiento</a>
-          </div>
-          <div className="font-body text-[13px] tracking-wide text-muted">
-            © 2024 Parabrisas la Boutique. El Atelier de Precisión.
-          </div>
+function Footer() {
+  return (
+    <footer className="border-t border-white/10 px-6 py-10 text-sm text-mute">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <img src="/logo.svg" alt="" className="h-8 w-8" />
+          <span>© {new Date().getFullYear()} Parabrisas La Boutique · Gallo Silvina Lilian · CUIT 27-23222613-2</span>
         </div>
-      </footer>
+      </div>
+    </footer>
+  );
+}
 
-      {/* Chatbot Integration — disabled for now */}
-    </div>
+export default function App() {
+  return (
+    <MotionConfig reducedMotion="user">
+      <Backdrop />
+      <Nav />
+      <main>
+        <Hero />
+        <Trayectoria />
+        <Servicios />
+        <Taller />
+        <Aseguradoras />
+        <Proceso />
+        <Preguntas />
+        <Contacto />
+      </main>
+      <Footer />
+    </MotionConfig>
   );
 }
