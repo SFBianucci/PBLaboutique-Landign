@@ -7,19 +7,51 @@ const W = 1280;
 const H = 960; // marco lógico de las fotos (4:3); los números de abajo están en este marco
 const INK = '#070908';
 
-const FRAMES = ['/taller/1.webp', '/taller/2.webp', '/taller/3.webp', '/taller/4.webp', '/taller/5.webp'];
+const FRAMES = Array.from({ length: 12 }, (_, i) => `/taller/${i + 1}.webp`);
 
-// Tramo i: de FRAMES[i] a FRAMES[i+1] mientras el scroll (0..1) está en `at`; entre tramos se queda quieta.
-// fit = [a, dx, dy]: dx y dy normalizados a W y H.
-const STEPS: { at: [number, number]; fit: [number, number, number] }[] = [
-  { at: [0.07, 0.3], fit: [1.2554, -0.0933, -0.2076] }, // la calle: la cámara se acerca al portón
-  { at: [0.32, 0.56], fit: [2.5, -0.8809, -0.8333] }, // portón: el salón aparece dentro de la abertura
-  { at: [0.64, 0.75], fit: [1.1256, -0.2085, -0.0591] }, // paneo por las estanterías
-  { at: [0.81, 0.92], fit: [1.1235, -0.0974, -0.1273] },
+// Ruta (en orden de las fotos): la calle, el portón, y adentro un barrido a la izquierda y la vuelta a la derecha.
+// Tramo = de FRAMES[from] a FRAMES[to] mientras el scroll (0..1) está en `at`. Van uno detrás del otro, sin pausas;
+// la duración de cada uno es proporcional a cuánto se mueve la cámara, así la velocidad es pareja.
+// fit = [a, dx, dy] con dx y dy normalizados a W y H (x_B = a·x_A + d).
+const STEPS: { from: number; to: number; at: [number, number]; fit: [number, number, number] }[] = [
+  { from: 0, to: 1, at: [0.05, 0.132], fit: [1.2554, -0.0933, -0.2076] }, // 5 → 6
+  { from: 1, to: 2, at: [0.132, 0.186], fit: [1.1777, -0.1028, -0.0717] }, // 6 → 7
+  { from: 2, to: 3, at: [0.186, 0.405], fit: [2.5000, -0.8516, -0.8281] }, // 7 → 45
+  { from: 3, to: 4, at: [0.405, 0.443], fit: [1.0053, 0.3052, -0.0387] }, // 45 → 46
+  { from: 4, to: 5, at: [0.443, 0.544], fit: [1.2780, 0.3255, -0.1281] }, // 46 → 47
+  { from: 5, to: 4, at: [0.544, 0.638], fit: [0.7732, -0.2444, 0.1088] }, // 47 → 46
+  { from: 4, to: 3, at: [0.638, 0.679], fit: [0.9734, -0.2891, 0.0483] }, // 46 → 45
+  { from: 3, to: 6, at: [0.679, 0.735], fit: [1.1883, -0.0468, -0.1101] }, // 45 → 48
+  { from: 6, to: 7, at: [0.735, 0.772], fit: [1.0224, -0.0740, -0.0639] }, // 48 → 49
+  { from: 7, to: 8, at: [0.772, 0.809], fit: [1.0854, -0.0575, -0.0136] }, // 49 → 50
+  { from: 8, to: 9, at: [0.809, 0.846], fit: [1.0690, -0.0562, 0.0021] }, // 50 → 51
+  { from: 9, to: 10, at: [0.846, 0.893], fit: [1.0986, -0.1972, -0.0253] }, // 51 → 54
+  { from: 10, to: 11, at: [0.893, 0.93], fit: [1.0434, -0.0854, -0.0460] }, // 54 → 55
 ];
 
 const clamp = (v: number) => Math.min(1, Math.max(0, v));
 const smooth = (v: number) => v * v * (3 - 2 * v);
+
+// Copia de la foto con los bordes que se desvanecen: la foto que entra no deja ver su rectángulo.
+function feather(img: HTMLImageElement) {
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  const x = c.getContext('2d')!;
+  x.drawImage(img, 0, 0);
+  x.globalCompositeOperation = 'destination-in';
+  for (const [w, h] of [[c.width, 0], [0, c.height]]) {
+    const g = x.createLinearGradient(0, 0, w, h);
+    const e = 0.07;
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(e, 'rgba(0,0,0,1)');
+    g.addColorStop(1 - e, 'rgba(0,0,0,1)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = g;
+    x.fillRect(0, 0, c.width, c.height);
+  }
+  return c;
+}
 
 export function mountPhotoTour(canvas: HTMLCanvasElement, progress: () => number) {
   const ctx = canvas.getContext('2d')!;
@@ -31,9 +63,14 @@ export function mountPhotoTour(canvas: HTMLCanvasElement, progress: () => number
     img.src = src;
     return img;
   });
-  // si una foto todavía no cargó se usa la anterior que sí
+  const soft: (HTMLCanvasElement | undefined)[] = [];
+  // si una foto todavía no cargó se usa la más cercana que sí
+  const ready = (k: number) => imgs[k]?.complete && imgs[k].naturalWidth > 0;
   const get = (i: number) => {
-    for (let k = i; k >= 0; k--) if (imgs[k].complete && imgs[k].naturalWidth) return imgs[k];
+    for (let d = 0; d < imgs.length; d++) {
+      if (ready(i - d)) return { img: imgs[i - d], i: i - d };
+      if (ready(i + d)) return { img: imgs[i + d], i: i + d };
+    }
     return null;
   };
 
@@ -67,20 +104,26 @@ export function mountPhotoTour(canvas: HTMLCanvasElement, progress: () => number
       if (p < a) { k = i; break; }
       if (p <= b) { k = i; t = (p - a) / (b - a); break; }
     }
-    const A = get(k);
-    if (!A) return;
-    const B = k < STEPS.length && t > 0 ? get(k + 1) : null;
+    const step = k < STEPS.length ? STEPS[k] : null;
+    const gA = get(step ? step.from : STEPS[STEPS.length - 1].to);
+    if (!gA) return;
+    const A = gA.img;
+    const gB = step && t > 0 ? get(step.to) : null;
+    const B = gB?.img ?? null;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;
     ctx.fillStyle = INK;
     ctx.fillRect(0, 0, cw, ch);
 
-    const g = smooth(t); // el movimiento arranca y frena suave
-    const alpha = smooth(g);
+    // el movimiento es lineal (la velocidad no se corta entre tramos; Lenis ya suaviza el scroll)
+    // y la mezcla entra en el medio del tramo
+    const g = t;
+    const alpha = smooth(clamp((t - 0.12) / 0.76));
+    // fondo: las propias fotos, desenfocadas (si no, asoman franjas negras en los costados)
+    backdrop(A, 1, cw, ch);
+    if (B) backdrop(B, alpha, cw, ch);
     if (portrait) {
-      backdrop(A, 1, cw, ch);
-      if (B) backdrop(B, alpha, cw, ch);
       ctx.globalAlpha = 0.62;
       ctx.fillStyle = INK;
       ctx.fillRect(0, 0, cw, ch);
@@ -88,8 +131,8 @@ export function mountPhotoTour(canvas: HTMLCanvasElement, progress: () => number
 
     // A se acerca hacia B (a_t = a^g, desplazamiento por el punto fijo del zoom) y B queda pegada a A
     let sa = 1, xa = 0, ya = 0, sb = 1, xb = 0, yb = 0;
-    if (B) {
-      const [a, dxn, dyn] = STEPS[k].fit;
+    if (B && step) {
+      const [a, dxn, dyn] = step.fit;
       const dx = dxn * W;
       const dy = dyn * H;
       sa = a ** g;
@@ -100,13 +143,17 @@ export function mountPhotoTour(canvas: HTMLCanvasElement, progress: () => number
       xb = xa - (sa * dx) / a;
       yb = ya - (sa * dy) / a;
     }
-    const put = (img: HTMLImageElement, sc: number, x: number, y: number, al: number) => {
+    const put = (img: CanvasImageSource, sc: number, x: number, y: number, al: number) => {
       ctx.setTransform(s * sc, 0, 0, s * sc, ox + s * x, oy + s * y);
       ctx.globalAlpha = al;
       ctx.drawImage(img, 0, 0, W, H);
     };
-    put(A, sa, xa, ya, 1);
-    if (B) put(B, sb, xb, yb, alpha);
+    // Bordes suaves solo cuando quedan dentro de la pantalla (foto achicada, o en vertical): si la foto llena la
+    // pantalla, difuminar los costados se vería como un velo, y al pasar a la siguiente foto "saltaría".
+    const edge = (sc: number) => portrait || sc < 0.96;
+    const pick = (g: { img: HTMLImageElement; i: number }, sc: number) => (edge(sc) ? (soft[g.i] ??= feather(g.img)) : g.img);
+    put(pick(gA, sa), sa, xa, ya, 1);
+    if (B && gB) put(pick(gB, sb), sb, xb, yb, alpha);
   };
 
   const resize = () => {

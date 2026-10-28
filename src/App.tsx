@@ -377,13 +377,13 @@ function Taller() {
   const canvas = useRef<HTMLCanvasElement>(null);
   useScene(canvas, p, () => Promise.resolve(mountPhotoTour));
   // los tiempos de las fotos están en PhotoTour.ts (STEPS); acá solo los textos
-  const titleO = useTransform(p, [0, 0.04, 0.07], [1, 1, 0]);
-  const cap1 = useTransform(p, [0.1, 0.16, 0.26, 0.31], [0, 1, 1, 0]);
-  const cap2 = useTransform(p, [0.58, 0.64, 0.88, 0.95], [0, 1, 1, 0]);
+  const titleO = useTransform(p, [0, 0.04, 0.08], [1, 1, 0]);
+  const cap1 = useTransform(p, [0.09, 0.14, 0.28, 0.34], [0, 1, 1, 0]);
+  const cap2 = useTransform(p, [0.56, 0.63, 0.88, 0.95], [0, 1, 1, 0]);
   const sceneO = useTransform(p, [0.95, 1], [1, 0]);
 
   return (
-    <section id="taller" ref={ref} className="relative h-[420vh]">
+    <section id="taller" ref={ref} className="relative h-[640vh]">
       <div className="sticky top-0 h-svh overflow-hidden">
         <motion.canvas ref={canvas} role="img" aria-label="Recorrido por las fotos reales del taller: la esquina, el portón y el salón con el stock de cristales" style={{ opacity: sceneO }} className="absolute inset-0 h-full w-full" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent via-45% to-transparent" />
