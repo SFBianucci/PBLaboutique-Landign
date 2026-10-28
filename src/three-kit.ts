@@ -10,14 +10,40 @@ export const INK = 0x070908;
 export const clamp = (v: number) => Math.min(1, Math.max(0, v));
 export const range = (p: number, a: number, b: number) => clamp((p - a) / (b - a));
 
-// Interpola entre pares [progreso, valor]
+// Arranca y frena suave (smoothstep) en vez de cambiar de velocidad de golpe
+export const ease = (v: number) => v * v * (3 - 2 * v);
+
+// Interpola entre pares [progreso, valor] con una cúbica monótona (Fritsch–Carlson): pasa por
+// cada par, nunca retrocede y la velocidad no salta en los quiebres. Con tramos lineales la
+// cámara pegaba tirones justo en cada par.
 export function keys(p: number, ks: [number, number][]) {
-  for (let i = 0; i < ks.length - 1; i++) {
-    const [p0, v0] = ks[i];
-    const [p1, v1] = ks[i + 1];
-    if (p <= p1) return v0 + (v1 - v0) * range(p, p0, p1);
+  const n = ks.length;
+  if (p <= ks[0][0]) return ks[0][1];
+  if (p >= ks[n - 1][0]) return ks[n - 1][1];
+  const d = ks.slice(1).map(([x, y], i) => (y - ks[i][1]) / (x - ks[i][0]));
+  const m = ks.map((_, i) => (i === 0 ? d[0] : i === n - 1 ? d[n - 2] : d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2));
+  for (let i = 0; i < n - 1; i++) {
+    if (d[i] === 0) {
+      m[i] = m[i + 1] = 0;
+      continue;
+    }
+    const a = m[i] / d[i];
+    const b = m[i + 1] / d[i];
+    const s = a * a + b * b;
+    if (s > 9) {
+      m[i] = (3 / Math.sqrt(s)) * a * d[i];
+      m[i + 1] = (3 / Math.sqrt(s)) * b * d[i];
+    }
   }
-  return ks[ks.length - 1][1];
+  let i = 0;
+  while (p > ks[i + 1][0]) i++;
+  const [x0, y0] = ks[i];
+  const [x1, y1] = ks[i + 1];
+  const h = x1 - x0;
+  const t = (p - x0) / h;
+  const t2 = t * t;
+  const t3 = t2 * t;
+  return (2 * t3 - 3 * t2 + 1) * y0 + (t3 - 2 * t2 + t) * h * m[i] + (-2 * t3 + 3 * t2) * y1 + (t3 - t2) * h * m[i + 1];
 }
 
 // PRNG determinístico: la escena sale igual en cada carga
@@ -96,9 +122,16 @@ export function runLoop(
   const canvas = renderer.domElement;
   let lastP = -1;
 
+  let w0 = 0;
+  let h0 = 0;
   const resize = () => {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
+    // En mobile salta "resize" cada vez que se muestra/oculta la barra de URL; reasignar el
+    // tamaño reinicia el canvas aunque no haya cambiado, y eso se nota como un tirón.
+    if (w === w0 && h === h0) return;
+    w0 = w;
+    h0 = h;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.fov = camera.aspect < 1 ? fov.portrait : fov.landscape;

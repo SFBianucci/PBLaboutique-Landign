@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ACCENT, bake, buildDust, createStage, glass, keys, range, rng, runLoop } from './three-kit';
+import { ACCENT, bake, buildDust, createStage, ease, glass, keys, range, rng, runLoop } from './three-kit';
 
 // Recorrido 3D estilizado del taller (Cerrito 2399): la cámara llega a la esquina,
 // el portón sube y entra al salón con el techo de luces hexagonales y las estanterías.
@@ -387,8 +387,8 @@ export function mountTallerScene(canvas: HTMLCanvasElement, progress: () => numb
   bake(scene);
 
   const path = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(5, 2.8, 17),
-    new THREE.Vector3(1.6, 2.1, 10),
+    new THREE.Vector3(4.2, 2.6, 14.5),
+    new THREE.Vector3(1.4, 2.0, 9),
     new THREE.Vector3(0, 1.6, 5),
     new THREE.Vector3(0, 1.5, 1.2),
     new THREE.Vector3(0, 1.5, -1.5),
@@ -405,18 +405,21 @@ export function mountTallerScene(canvas: HTMLCanvasElement, progress: () => numb
     new THREE.Vector3(0, 2.3, -11),
   ]);
   const target = new THREE.Vector3();
+  const pathLength = path.getLength();
 
   const dispose = runLoop(
     stage,
     progress,
     (p) => {
-      // llega a la esquina → se frena mientras sube el portón → entra → recorre el salón
-      const t = keys(p, [[0, 0], [0.28, 0.34], [0.45, 0.4], [0.6, 0.62], [1, 1]]);
-      path.getPoint(t, camera.position);
-      look.getPoint(t, target);
+      // llega a la esquina → se frena mientras sube el portón → entra → recorre el salón.
+      // t es fracción de distancia (velocidad pareja) y el parámetro del mismo punto elige a qué
+      // punto de `look` mira. Fracciones: 0.50 a 5 m del portón, 0.62 a 2.6 m, 0.82 ya adentro.
+      const t = keys(p, [[0, 0], [0.3, 0.502], [0.5, 0.618], [0.64, 0.815], [1, 1]]);
+      path.getPointAt(t, camera.position);
+      look.getPoint(path.getUtoTmapping(t, t * pathLength), target);
       camera.lookAt(target);
       // el portón se enrolla: el borde de arriba queda fijo y sube el de abajo
-      const open = Math.min(0.97, range(p, 0.26, 0.48));
+      const open = Math.min(0.97, ease(range(p, 0.3, 0.5)));
       gate.scale.y = 1 - open;
       gate.position.y = GATE[3] * (1 - (1 - open) / 2);
       dust.rotation.y = p * 0.3;

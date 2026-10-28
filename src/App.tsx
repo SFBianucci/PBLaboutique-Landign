@@ -24,6 +24,8 @@ import {
   Star,
   SunDim,
 } from 'lucide-react';
+import Lenis from 'lenis';
+import 'lenis/dist/lenis.css';
 
 const PHONE_LABEL = '11 5715-1222';
 const WA = `https://wa.me/5491157151222?text=${encodeURIComponent('¡Hola! Quería hacer una consulta por un trabajo.')}`;
@@ -65,9 +67,9 @@ const STEPS = [
 function useSection(offset: any = ['start start', 'end end']) {
   const ref = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset });
-  // El spring suaviza el scroll y además evita la aceleración nativa de Motion (ScrollTimeline),
-  // que ignora los rangos de useTransform con target + offset.
-  const smooth = useSpring(scrollYProgress, { stiffness: 400, damping: 60, restDelta: 0.0001 });
+  // El suavizado lo pone Lenis. La función identidad evita la aceleración nativa de Motion
+  // (ScrollTimeline), que ignora los rangos de useTransform con target + offset.
+  const smooth = useTransform(scrollYProgress, (v) => v);
   return [ref, smooth] as const;
 }
 
@@ -120,6 +122,8 @@ function Backdrop() {
         style={reduce ? { opacity: 0.18 } : { scale: imgScale, opacity: imgOpacity }}
         className="absolute inset-0 h-full w-full object-cover will-change-transform"
       />
+      {/* Las luces van en capa propia (will-change): si no, al moverse obligan a redibujar todo el
+          fondo en cada frame. Medido con scroll continuo: 12–17 ms → 7 ms por frame. */}
       <motion.div
         style={reduce ? undefined : { x: x1, y: y1 }}
         className="absolute h-[55vmax] w-[55vmax] bg-[radial-gradient(circle,rgb(61_220_132/0.16),transparent_65%)] will-change-transform"
@@ -130,7 +134,6 @@ function Backdrop() {
       />
       <div className="grid-lines absolute inset-0" />
       <div className="absolute inset-0 bg-gradient-to-b from-ink/30 via-transparent to-ink/80" />
-      <div className="grain absolute inset-0" />
     </div>
   );
 }
@@ -166,7 +169,8 @@ function Hero() {
   const canvas = useRef<HTMLCanvasElement>(null);
   const contentO = useTransform(p, [0, 0.12], [1, 0]);
   const contentS = useTransform(p, [0, 0.15], [1, 0.9]);
-  const contentBlur = useTransform(p, [0, 0.12], ['blur(0px)', 'blur(14px)']);
+  // sin filter: blur animado (obliga a redibujar el título entero en cada frame); sube y se desvanece
+  const contentY = useTransform(p, [0, 0.15], [0, -60]);
   const msgO = useTransform(p, [0.2, 0.28, 0.5, 0.57], [0, 1, 1, 0]);
   const msgY = useTransform(p, [0.2, 0.28], [40, 0]);
   const fixO = useTransform(p, [0.42, 0.48], [0, 1]);
@@ -182,7 +186,7 @@ function Hero() {
         <motion.canvas ref={canvas} style={{ opacity: sceneO }} aria-hidden className="absolute inset-0 h-full w-full" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,var(--color-ink)_100%)]" />
 
-        <motion.div style={{ opacity: contentO, scale: contentS, filter: contentBlur }} className="relative max-w-5xl text-center">
+        <motion.div style={{ opacity: contentO, scale: contentS, y: contentY }} className="relative max-w-5xl text-center will-change-[transform,opacity]">
           <motion.img
             src="/logo.svg"
             alt="Logo Parabrisas La Boutique"
@@ -229,14 +233,14 @@ function Hero() {
           </motion.div>
         </motion.div>
 
-        <motion.div style={{ opacity: msgO, y: msgY }} className="pointer-events-none absolute bottom-[12%] max-w-4xl px-6 text-center">
+        <motion.div style={{ opacity: msgO, y: msgY }} className="pointer-events-none absolute bottom-[12%] max-w-4xl px-6 text-center will-change-[transform,opacity]">
           <p className="font-display text-5xl font-bold leading-tight md:text-7xl">Cada impacto tiene solución.</p>
           <motion.p style={{ opacity: fixO }} className="mt-4 text-xl text-accent md:text-2xl">
             Y la dejamos como nueva.
           </motion.p>
         </motion.div>
 
-        <motion.div style={{ opacity: msg2O }} className="pointer-events-none absolute max-w-4xl px-6 text-center">
+        <motion.div style={{ opacity: msg2O }} className="pointer-events-none absolute max-w-4xl px-6 text-center will-change-[opacity]">
           <p className="font-display text-5xl font-bold leading-tight md:text-7xl">Cristal por cristal,</p>
           <p className="mt-2 font-display text-5xl font-bold leading-tight text-accent md:text-7xl">desde 1997.</p>
         </motion.div>
@@ -253,14 +257,32 @@ function Hero() {
 function Fade({ p, range, children, className = '' }: { p: MotionValue<number>; range: [number, number]; children: ReactNode; className?: string }) {
   const opacity = useTransform(p, range, [0.12, 1]);
   const y = useTransform(p, range, [24, 0]);
-  return <motion.div style={{ opacity, y }} className={className}>{children}</motion.div>;
+  return <motion.div style={{ opacity, y }} className={`will-change-[transform,opacity] ${className}`}>{children}</motion.div>;
+}
+
+// Dígito de odómetro: una tira 0–9–0 que se desplaza en continuo. Las unidades ruedan siempre;
+// cada dígito superior solo rueda mientras el de abajo pasa de 9 a 0 (como un cuentakilómetros).
+function Digit({ value, place }: { value: MotionValue<number>; place: number }) {
+  const y = useTransform(value, (v) => {
+    const whole = Math.floor(v / place) % 10;
+    const roll = place === 1 ? v % 1 : Math.max(0, (v % place) - (place - 1));
+    return `${-(whole + roll)}em`;
+  });
+  return (
+    <span className="inline-block h-[1em] overflow-hidden">
+      <motion.span style={{ y }} className="block will-change-transform">
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((d, i) => (
+          <span key={i} className="block h-[1em]">{d}</span>
+        ))}
+      </motion.span>
+    </span>
+  );
 }
 
 function Trayectoria() {
   const [ref, p] = useSection();
   const year = useTransform(p, [0, 0.55], [1997, new Date().getFullYear()]);
-  const yearText = useTransform(year, (v) => Math.round(v).toString());
-  const years = useTransform(year, (v) => `${Math.round(v) - 1997} años de oficio`);
+  const years = useTransform(year, (v) => `${Math.floor(v) - 1997} años de oficio`);
   const bar = useTransform(p, [0, 0.55], [0, 1]);
 
   return (
@@ -269,9 +291,16 @@ function Trayectoria() {
         <div className="mx-auto grid max-w-6xl gap-12 px-6 md:grid-cols-2 md:items-center">
           <div>
             <Eyebrow>Quiénes somos</Eyebrow>
-            <motion.div className="font-display text-8xl font-bold leading-none tracking-tighter tabular-nums sm:text-9xl">
-              {yearText}
-            </motion.div>
+            <div className="font-display text-8xl font-bold leading-none tracking-tighter tabular-nums sm:text-9xl">
+              <span className="sr-only">Desde 1997</span>
+              <span aria-hidden className="inline-flex">
+                {[1000, 100, 10, 1].map((place) => (
+                  <span key={place}>
+                    <Digit value={year} place={place} />
+                  </span>
+                ))}
+              </span>
+            </div>
             <div className="mt-4 h-px w-full bg-white/10">
               <motion.div style={{ scaleX: bar }} className="h-px origin-left bg-accent" />
             </div>
@@ -353,15 +382,15 @@ function Taller() {
       <div className="sticky top-0 h-svh overflow-hidden">
         <motion.canvas ref={canvas} style={{ opacity: sceneO }} aria-hidden className="absolute inset-0 h-full w-full" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent to-ink/40" />
-        <motion.div style={{ opacity: titleO }} className="absolute inset-x-0 top-[14%] text-center">
+        <motion.div style={{ opacity: titleO }} className="absolute inset-x-0 top-[14%] text-center will-change-[opacity]">
           <Eyebrow>El taller</Eyebrow>
           <h2 className="font-display text-5xl font-bold md:text-7xl">Vení a conocernos.</h2>
         </motion.div>
-        <motion.div style={{ opacity: cap1 }} className="absolute inset-x-0 bottom-12 mx-auto max-w-6xl px-6">
+        <motion.div style={{ opacity: cap1 }} className="absolute inset-x-0 bottom-12 mx-auto max-w-6xl px-6 will-change-[opacity]">
           <Eyebrow>Lomas del Mirador</Eyebrow>
           <p className="max-w-2xl font-display text-4xl font-bold md:text-6xl">Cerrito 2399, en la esquina. Con entrada de vehículos.</p>
         </motion.div>
-        <motion.div style={{ opacity: cap2 }} className="absolute inset-x-0 bottom-12 mx-auto max-w-6xl px-6">
+        <motion.div style={{ opacity: cap2 }} className="absolute inset-x-0 bottom-12 mx-auto max-w-6xl px-6 will-change-[opacity]">
           <Eyebrow>Por dentro</Eyebrow>
           <p className="max-w-2xl font-display text-4xl font-bold md:text-6xl">Taller cubierto y stock propio de cristales.</p>
         </motion.div>
@@ -417,7 +446,7 @@ function Aseguradoras() {
         </p>
       </div>
       {rows.map((row, r) => (
-        <motion.div key={r} style={{ x: r ? x2 : x1 }} className="flex w-max gap-12 py-4 whitespace-nowrap">
+        <motion.div key={r} style={{ x: r ? x2 : x1 }} className="flex w-max gap-12 py-4 whitespace-nowrap will-change-transform">
           {[...row, ...row].map((name, i) => (
             <span key={i} className="font-display text-5xl font-bold uppercase text-outline transition-colors hover:text-accent md:text-7xl">
               {name}
@@ -579,7 +608,18 @@ function Footer() {
   );
 }
 
+// Scroll suave con inercia (como sumar.dev): la rueda del mouse en Windows salta de a ~100px
+// y las animaciones atadas al scroll avanzan a tirones. En touch queda el scroll nativo.
+function useSmoothScroll() {
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const lenis = new Lenis({ autoRaf: true, lerp: 0.09, anchors: true });
+    return () => lenis.destroy();
+  }, []);
+}
+
 export default function App() {
+  useSmoothScroll();
   return (
     <MotionConfig reducedMotion="user">
       <Backdrop />
