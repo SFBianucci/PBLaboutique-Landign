@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 import {
   motion,
   MotionConfig,
@@ -69,6 +69,27 @@ function useSection(offset: any = ['start start', 'end end']) {
   // que ignora los rangos de useTransform con target + offset.
   const smooth = useSpring(scrollYProgress, { stiffness: 400, damping: 60, restDelta: 0.0001 });
   return [ref, smooth] as const;
+}
+
+// Monta una escena three.js en el canvas. three se carga aparte para no frenar la primera pintura.
+type Mount = (canvas: HTMLCanvasElement, progress: () => number) => () => void;
+function useScene(canvas: RefObject<HTMLCanvasElement | null>, p: MotionValue<number>, load: () => Promise<Mount>) {
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    let alive = true;
+    load().then((mount) => {
+      if (!alive) return;
+      try {
+        cleanup = mount(canvas.current!, () => p.get());
+      } catch {
+        // ponytail: sin WebGL queda el fondo blurreado de Backdrop, no hace falta otro fallback
+      }
+    });
+    return () => {
+      alive = false;
+      cleanup?.();
+    };
+  }, [p]);
 }
 
 function Eyebrow({ children }: { children: ReactNode }) {
@@ -153,23 +174,7 @@ function Hero() {
   const hintO = useTransform(p, [0, 0.03], [1, 0]);
   const sceneO = useTransform(p, [0.9, 1], [1, 0]); // funde a negro para empalmar con la trayectoria
 
-  useEffect(() => {
-    // three.js se carga aparte para no frenar la primera pintura
-    let cleanup: (() => void) | undefined;
-    let alive = true;
-    import('./GlassScene').then(({ mountGlassScene }) => {
-      if (!alive) return;
-      try {
-        cleanup = mountGlassScene(canvas.current!, () => p.get());
-      } catch {
-        // ponytail: sin WebGL queda el fondo blurreado de Backdrop, no hace falta otro fallback
-      }
-    });
-    return () => {
-      alive = false;
-      cleanup?.();
-    };
-  }, [p]);
+  useScene(canvas, p, () => import('./GlassScene').then((m) => m.mountGlassScene));
 
   return (
     <section id="top" ref={ref} className="relative h-[450vh]">
@@ -336,35 +341,58 @@ function Servicios() {
 
 function Taller() {
   const [ref, p] = useSection();
-  // En vertical el recorte inicial casi no toca los costados, si no queda una franja angosta
-  const start = window.innerWidth < 768 ? 'inset(18% 6% 14% 6% round 24px)' : 'inset(24% 26% 12% 26% round 32px)';
-  const clip = useTransform(p, [0, 0.4], [start, 'inset(0% 0% 0% 0% round 0px)']);
-  const frenteS = useTransform(p, [0, 0.4], [1.12, 1]);
-  const titleO = useTransform(p, [0, 0.25], [1, 0]);
-  const cap1 = useTransform(p, [0.3, 0.42, 0.55, 0.62], [0, 1, 1, 0]);
-  const interiorO = useTransform(p, [0.55, 0.7], [0, 1]);
-  const interiorS = useTransform(p, [0.55, 1], [1.2, 1]);
-  const cap2 = useTransform(p, [0.7, 0.82], [0, 1]);
+  const canvas = useRef<HTMLCanvasElement>(null);
+  useScene(canvas, p, () => import('./TallerScene').then((m) => m.mountTallerScene));
+  const titleO = useTransform(p, [0, 0.06], [1, 0]);
+  const cap1 = useTransform(p, [0.06, 0.12, 0.24, 0.3], [0, 1, 1, 0]);
+  const cap2 = useTransform(p, [0.7, 0.78, 0.9, 0.96], [0, 1, 1, 0]);
+  const sceneO = useTransform(p, [0.93, 1], [1, 0]);
 
   return (
-    <section id="taller" ref={ref} className="relative h-[300vh]">
+    <section id="taller" ref={ref} className="relative h-[450vh]">
       <div className="sticky top-0 h-svh overflow-hidden">
-        <motion.h2 style={{ opacity: titleO }} className="absolute inset-x-0 top-[9%] text-center font-display text-5xl font-bold uppercase md:text-8xl">
-          El taller
-        </motion.h2>
-        <motion.div style={{ clipPath: clip }} className="absolute inset-0">
-          <motion.img src="/taller-frente.webp" alt="Frente del taller Parabrisas La Boutique" style={{ scale: frenteS }} className="h-full w-full object-cover object-[center_40%]" />
-          <motion.img src="/taller-interior.webp" alt="Interior del taller con stock de cristales" style={{ opacity: interiorO, scale: interiorS }} className="absolute inset-0 h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/20 to-transparent" />
+        <motion.canvas ref={canvas} style={{ opacity: sceneO }} aria-hidden className="absolute inset-0 h-full w-full" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent to-ink/40" />
+        <motion.div style={{ opacity: titleO }} className="absolute inset-x-0 top-[14%] text-center">
+          <Eyebrow>El taller</Eyebrow>
+          <h2 className="font-display text-5xl font-bold md:text-7xl">Vení a conocernos.</h2>
         </motion.div>
         <motion.div style={{ opacity: cap1 }} className="absolute inset-x-0 bottom-12 mx-auto max-w-6xl px-6">
           <Eyebrow>Lomas del Mirador</Eyebrow>
-          <p className="max-w-2xl font-display text-4xl font-bold md:text-6xl">Cerrito 2399, esquina. Fácil de llegar, con entrada de vehículos.</p>
+          <p className="max-w-2xl font-display text-4xl font-bold md:text-6xl">Cerrito 2399, en la esquina. Con entrada de vehículos.</p>
         </motion.div>
         <motion.div style={{ opacity: cap2 }} className="absolute inset-x-0 bottom-12 mx-auto max-w-6xl px-6">
           <Eyebrow>Por dentro</Eyebrow>
-          <p className="max-w-2xl font-display text-4xl font-bold md:text-6xl">Taller cubierto y stock de cristales propio.</p>
+          <p className="max-w-2xl font-display text-4xl font-bold md:text-6xl">Taller cubierto y stock propio de cristales.</p>
         </motion.div>
+      </div>
+    </section>
+  );
+}
+
+function TallerFotos() {
+  const fotos = [
+    { src: '/taller-frente.webp', alt: 'Frente del taller Parabrisas La Boutique', cap: 'El frente, sobre Cerrito', pos: 'object-[center_35%]' },
+    { src: '/taller-interior.webp', alt: 'Interior del taller con stock de cristales', cap: 'El salón y el stock de cristales', pos: 'object-center' },
+  ];
+  return (
+    <section className="relative px-6 pb-32">
+      <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-2">
+        {fotos.map((f, i) => (
+          <motion.figure
+            key={f.src}
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-15%' }}
+            transition={{ delay: i * 0.1, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="relative overflow-hidden rounded-3xl border border-white/10"
+          >
+            <img src={f.src} alt={f.alt} loading="lazy" className={`aspect-[4/5] w-full object-cover ${f.pos}`} />
+            <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/90 to-transparent p-6 text-sm uppercase tracking-[0.2em]">
+              {f.cap}
+            </figcaption>
+          </motion.figure>
+        ))}
       </div>
     </section>
   );
@@ -561,6 +589,7 @@ export default function App() {
         <Trayectoria />
         <Servicios />
         <Taller />
+        <TallerFotos />
         <Aseguradoras />
         <Proceso />
         <Preguntas />

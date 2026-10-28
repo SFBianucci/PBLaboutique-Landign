@@ -1,51 +1,13 @@
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { ACCENT, bake, buildDust, createStage, glass, keys, range, rng, runLoop } from './three-kit';
 
 // Escena del hero: parabrisas → impacto → reparación → la cámara lo atraviesa
 // y recorre un pasillo de cristales. Todo lo maneja `progress()` (0..1 del scroll).
 
-const ACCENT = 0x3ddc84;
-const INK = 0x070908;
 const PANE_W = 4.2;
 const PANE_H = 1.9;
 const CURVE = 0.12;
-
-const clamp = (v: number) => Math.min(1, Math.max(0, v));
-const range = (p: number, a: number, b: number) => clamp((p - a) / (b - a));
 const zAt = (x: number) => -CURVE * x * x;
-
-// Interpola entre pares [progreso, valor]
-function keys(p: number, ks: [number, number][]) {
-  for (let i = 0; i < ks.length - 1; i++) {
-    const [p0, v0] = ks[i];
-    const [p1, v1] = ks[i + 1];
-    if (p <= p1) return v0 + (v1 - v0) * range(p, p0, p1);
-  }
-  return ks[ks.length - 1][1];
-}
-
-// PRNG determinístico para que la grieta sea siempre la misma
-function rng(seed: number) {
-  return () => {
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function glass(opacity: number) {
-  return new THREE.MeshStandardMaterial({
-    color: 0x7fe0aa,
-    roughness: 0.04,
-    metalness: 0,
-    envMapIntensity: 1.6,
-    transparent: true,
-    opacity,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-  });
-}
 
 function buildWindshield() {
   const geo = new THREE.PlaneGeometry(PANE_W, PANE_H, 48, 12);
@@ -107,7 +69,6 @@ function buildAisle(scene: THREE.Scene) {
   const edgesGeo = new THREE.EdgesGeometry(geo);
   const mat = glass(0.1);
   const edgeMat = new THREE.LineBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.7 });
-  const racks: THREE.Group[] = [];
   for (let i = 0; i < 20; i++) {
     const side = i % 2 ? 1 : -1;
     const rack = new THREE.Group();
@@ -120,7 +81,6 @@ function buildAisle(scene: THREE.Scene) {
     }
     rack.position.set(side * (2.1 + r() * 0.5), 0, -5 - Math.floor(i / 2) * 4.5);
     rack.rotation.y = side * 0.3;
-    racks.push(rack);
     scene.add(rack);
   }
   const grid = new THREE.GridHelper(220, 110, ACCENT, 0x1c3326);
@@ -136,52 +96,26 @@ function buildAisle(scene: THREE.Scene) {
   );
   portal.position.set(0, 0.2, -52);
   scene.add(portal);
-  return { racks, portal };
-}
-
-function buildDust() {
-  const r = rng(11);
-  const n = 1400;
-  const v = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) {
-    v[i * 3] = (r() - 0.5) * 16;
-    v[i * 3 + 1] = (r() - 0.5) * 7 + 0.5;
-    v[i * 3 + 2] = 10 - r() * 75;
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(v, 3));
-  return new THREE.Points(
-    geo,
-    new THREE.PointsMaterial({ color: 0xbfffe0, size: 0.025, transparent: true, opacity: 0.55, depthWrite: false }),
-  );
 }
 
 export function mountGlassScene(canvas: HTMLCanvasElement, progress: () => number) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(INK);
-  scene.fog = new THREE.FogExp2(INK, 0.05);
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-
-  const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 200);
-  const light = new THREE.PointLight(ACCENT, 25, 10);
-  camera.add(light);
-  scene.add(camera);
+  const stage = createStage(canvas, 0.05);
+  const { scene, camera } = stage;
+  camera.add(new THREE.PointLight(ACCENT, 25, 10));
 
   const shield = buildWindshield();
   const crack = buildCrack();
   const windshield = new THREE.Group();
   windshield.add(shield.mesh, shield.edges, crack.lines);
   windshield.rotation.x = -0.22;
+  windshield.userData.keep = true; // rota y la grieta cambia: no se junta con el resto
   scene.add(windshield);
 
   buildAisle(scene);
-  const dust = buildDust();
+  const dust = buildDust(1400, [16, 7, 75], [0, 0.5, -27.5]);
   scene.add(dust);
+
+  bake(scene);
 
   const path = new THREE.CatmullRomCurve3([
     new THREE.Vector3(0, 0.3, 8),
@@ -194,58 +128,25 @@ export function mountGlassScene(canvas: HTMLCanvasElement, progress: () => numbe
   ]);
   const ahead = new THREE.Vector3();
 
-  // Solo se dibuja cuando cambia el scroll (o el tamaño): sin animaciones en reposo
-  // la escena no ocupa la GPU mientras el usuario lee.
-  let dirty = true;
-  let lastP = -1;
-  const resize = () => {
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.fov = camera.aspect < 1 ? 72 : 50; // en vertical hace falta más campo para ver el parabrisas
-    camera.updateProjectionMatrix();
-    dirty = true;
-  };
-  resize();
-  window.addEventListener('resize', resize);
+  return runLoop(
+    stage,
+    progress,
+    (p) => {
+      // Cámara: se acerca lento mientras pasa lo del impacto, después atraviesa y recorre
+      const t = keys(p, [[0, 0], [0.5, 0.075], [0.62, 0.16], [1, 1]]);
+      path.getPointAt(t, camera.position);
+      path.getPointAt(Math.min(1, t + 0.04), ahead);
+      camera.lookAt(ahead);
 
-  let visible = true;
-  const io = new IntersectionObserver(([e]) => (visible = e.isIntersecting));
-  io.observe(canvas);
-
-  let raf = 0;
-  const tick = () => {
-    raf = requestAnimationFrame(tick);
-    const p = progress();
-    if (!visible || (!dirty && Math.abs(p - lastP) < 1e-5)) return;
-    dirty = false;
-    lastP = p;
-
-    // Cámara: se acerca lento mientras pasa lo del impacto, después atraviesa y recorre
-    const t = keys(p, [[0, 0], [0.5, 0.075], [0.62, 0.16], [1, 1]]);
-    path.getPointAt(t, camera.position);
-    path.getPointAt(Math.min(1, t + 0.04), ahead);
-    camera.lookAt(ahead);
-
-    // Grieta: crece, y con la "reparación" se desvanece con un destello verde
-    const grow = range(p, 0.18, 0.36);
-    const repair = range(p, 0.42, 0.52);
-    crack.lines.geometry.setDrawRange(0, Math.floor((crack.count * grow) / 2) * 2);
-    (crack.lines.material as THREE.LineBasicMaterial).opacity = 0.9 * (1 - repair);
-    (shield.edges.material as THREE.LineBasicMaterial).opacity = 0.7 + 0.3 * Math.sin(repair * Math.PI);
-    windshield.rotation.y = (1 - range(p, 0, 0.3)) * 0.12;
-    dust.rotation.z = p * 0.4;
-
-    renderer.render(scene, camera);
-  };
-  raf = requestAnimationFrame(tick);
-
-  return () => {
-    cancelAnimationFrame(raf);
-    io.disconnect();
-    window.removeEventListener('resize', resize);
-    pmrem.dispose();
-    renderer.dispose();
-  };
+      // Grieta: crece, y con la "reparación" se desvanece con un destello verde
+      const grow = range(p, 0.18, 0.36);
+      const repair = range(p, 0.42, 0.52);
+      crack.lines.geometry.setDrawRange(0, Math.floor((crack.count * grow) / 2) * 2);
+      (crack.lines.material as THREE.LineBasicMaterial).opacity = 0.9 * (1 - repair);
+      (shield.edges.material as THREE.LineBasicMaterial).opacity = 0.7 + 0.3 * Math.sin(repair * Math.PI);
+      windshield.rotation.y = (1 - range(p, 0, 0.3)) * 0.12;
+      dust.rotation.z = p * 0.4;
+    },
+    { landscape: 50, portrait: 72 }, // en vertical hace falta más campo para ver el parabrisas
+  );
 }
