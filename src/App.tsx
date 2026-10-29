@@ -379,7 +379,7 @@ function Taller() {
   // los tiempos de las fotos están en PhotoTour.ts (STEPS); acá solo los textos
   const titleO = useTransform(p, [0, 0.04, 0.08], [1, 1, 0]);
   const cap1 = useTransform(p, [0.09, 0.14, 0.28, 0.34], [0, 1, 1, 0]);
-  const cap2 = useTransform(p, [0.56, 0.63, 0.88, 0.95], [0, 1, 1, 0]);
+  const cap2 = useTransform(p, [0.4, 0.46, 0.88, 0.95], [0, 1, 1, 0]);
   const sceneO = useTransform(p, [0.95, 1], [1, 0]);
 
   return (

@@ -9,24 +9,22 @@ const INK = '#070908';
 
 const FRAMES = Array.from({ length: 12 }, (_, i) => `/taller/${i + 1}.webp`);
 
-// Ruta (en orden de las fotos): la calle, el portón, y adentro un barrido a la izquierda y la vuelta a la derecha.
+// Ruta: la calle, el portón y adentro UN solo paneo de izquierda a derecha por el salón (fotos 46, 45, 48… 55).
 // Tramo = de FRAMES[from] a FRAMES[to] mientras el scroll (0..1) está en `at`. Van uno detrás del otro, sin pausas;
 // la duración de cada uno es proporcional a cuánto se mueve la cámara, así la velocidad es pareja.
 // fit = [a, dx, dy] con dx y dy normalizados a W y H (x_B = a·x_A + d).
 const STEPS: { from: number; to: number; at: [number, number]; fit: [number, number, number] }[] = [
-  { from: 0, to: 1, at: [0.05, 0.132], fit: [1.2554, -0.0933, -0.2076] }, // 5 → 6
-  { from: 1, to: 2, at: [0.132, 0.186], fit: [1.1777, -0.1028, -0.0717] }, // 6 → 7
-  { from: 2, to: 3, at: [0.186, 0.405], fit: [2.5000, -0.8516, -0.8281] }, // 7 → 45
-  { from: 3, to: 4, at: [0.405, 0.443], fit: [1.0053, 0.3052, -0.0387] }, // 45 → 46
-  { from: 4, to: 5, at: [0.443, 0.544], fit: [1.2780, 0.3255, -0.1281] }, // 46 → 47
-  { from: 5, to: 4, at: [0.544, 0.638], fit: [0.7732, -0.2444, 0.1088] }, // 47 → 46
-  { from: 4, to: 3, at: [0.638, 0.679], fit: [0.9734, -0.2891, 0.0483] }, // 46 → 45
-  { from: 3, to: 6, at: [0.679, 0.735], fit: [1.1883, -0.0468, -0.1101] }, // 45 → 48
-  { from: 6, to: 7, at: [0.735, 0.772], fit: [1.0224, -0.0740, -0.0639] }, // 48 → 49
-  { from: 7, to: 8, at: [0.772, 0.809], fit: [1.0854, -0.0575, -0.0136] }, // 49 → 50
-  { from: 8, to: 9, at: [0.809, 0.846], fit: [1.0690, -0.0562, 0.0021] }, // 50 → 51
-  { from: 9, to: 10, at: [0.846, 0.893], fit: [1.0986, -0.1972, -0.0253] }, // 51 → 54
-  { from: 10, to: 11, at: [0.893, 0.93], fit: [1.0434, -0.0854, -0.0460] }, // 54 → 55
+  { from: 0, to: 1, at: [0.05, 0.139], fit: [1.2554, -0.0933, -0.2076] }, // 5 → 6
+  { from: 1, to: 2, at: [0.139, 0.198], fit: [1.1777, -0.1028, -0.0717] }, // 6 → 7
+  { from: 2, to: 3, at: [0.198, 0.366], fit: [2.5000, -0.8516, -0.8281] }, // 7 → 46
+  { from: 3, to: 4, at: [0.366, 0.466], fit: [0.9734, -0.2891, 0.0483] }, // 46 → 45
+  { from: 4, to: 5, at: [0.466, 0.6], fit: [1.1883, -0.0468, -0.1101] }, // 45 → 48
+  { from: 5, to: 6, at: [0.6, 0.641], fit: [1.0224, -0.0740, -0.0639] }, // 48 → 49
+  { from: 6, to: 7, at: [0.641, 0.705], fit: [1.0854, -0.0575, -0.0136] }, // 49 → 50
+  { from: 7, to: 8, at: [0.705, 0.759], fit: [1.0690, -0.0562, 0.0021] }, // 50 → 51
+  { from: 8, to: 9, at: [0.759, 0.86], fit: [1.1016, -0.1550, -0.0045] }, // 51 → 53
+  { from: 9, to: 10, at: [0.86, 0.878], fit: [0.9900, -0.0390, -0.0164] }, // 53 → 54
+  { from: 10, to: 11, at: [0.878, 0.93], fit: [1.0434, -0.0854, -0.0460] }, // 54 → 55
 ];
 
 const clamp = (v: number) => Math.min(1, Math.max(0, v));
