@@ -110,18 +110,21 @@ function Eyebrow({ children }: { children: ReactNode }) {
 const STILL = motionValue(0);
 const STILL_DASH = motionValue('1 0');
 
-// Piezas del logo (de public/logo.svg): el trazo inclinado, la P y la L
+// Piezas del logo (de public/logo.svg): el trazo inclinado, la P y la L.
+// h y v: hacia dónde se corre cada pieza cuando el logo se abre en horizontal o en vertical (unidades del SVG)
 const LOGO_PARTS = [
-  { d: 'M76.97 848.75H199.45L344.49 557.39H389.41L437.31 463.7H285.19Z', core: '#eafff3', drift: [-260, 30, -4] },
+  { d: 'M76.97 848.75H199.45L344.49 557.39H389.41L437.31 463.7H285.19Z', core: '#eafff3', h: [-260, 30], v: [-30, 220] },
   {
     d: 'M584.94,463.7l-52.41,101.42h202.94s104.55-2,163.21-95.26c0,0,31.3-37.23,19.72-140.27-11.58-103.04-48.7-126.58-58.12-138.08-9.42-11.51-46.07-40.73-148.08-40.72h-259.99l-57.24,114.89h315.07c21.62,0,42.94,6.17,60.73,18.48,21.25,14.71,41.76,40.36,38.86,84.14,0,0-.1,15.43-9.41,35.07-17.63,37.17-55.65,60.36-96.79,60.36h-118.49Z',
     core: '#eafff3',
-    drift: [170, -40, 3],
+    h: [170, -40],
+    v: [20, -240],
   },
   {
     d: 'M738.7,848.75h-478.01l241.3-489.05h120.54l-195.96,397.94h280.05s40.77,2.54,40.77-46.73v-89.79l109.3-38.57v134.3c0,2.87.04,5.75.1,8.63.36,18.36-20.51,123.27-118.08,123.27Z',
     core: 'var(--color-accent)',
-    drift: [-90, 60, -2],
+    h: [-90, 60],
+    v: [10, 160],
   },
 ];
 
@@ -133,13 +136,58 @@ const GLOW = [
   { w: 1.5, o: 0.8 },
 ];
 
-function LogoPart({ part, open, dash, offset }: { part: (typeof LOGO_PARTS)[number]; open: MotionValue<number>; dash: MotionValue<string>; offset: MotionValue<number> }) {
-  const [dx, dy, rot] = part.drift;
-  const x = useTransform(open, (o) => o * dx);
-  const y = useTransform(open, (o) => o * dy);
-  const rotate = useTransform(open, (o) => o * rot);
+// Pose del logo en cada sección, en el orden de <main>. x, y: corrimiento del centro (vw, vh); size: escala;
+// skew, sx, sy: deformación; rotY: giro 3D; spreadH/V: cuánto se abren las piezas; cut: cuánto se corta el
+// contorno en tramos; streaks: líneas de luz que cruzan la pantalla.
+type Look = { x: number; y: number; size: number; skew: number; sx: number; sy: number; rotY: number; rot: number; spreadH: number; spreadV: number; cut: number; streaks: number };
+const LOOKS: Look[] = [
+  /* hero         */ { x: 0, y: -4, size: 1, skew: 0, sx: 1, sy: 1, rotY: 0, rot: 0, spreadH: 0, spreadV: 0, cut: 0.1, streaks: 0 },
+  /* trayectoria  */ { x: 22, y: -6, size: 0.9, skew: 0, sx: 1, sy: 1, rotY: -24, rot: 0, spreadH: 0, spreadV: 0, cut: 0.15, streaks: 0 },
+  /* servicios    */ { x: 16, y: -16, size: 1.05, skew: -26, sx: 1.6, sy: 0.65, rotY: 0, rot: 0, spreadH: 1, spreadV: 0, cut: 0.7, streaks: 1 },
+  /* taller       */ { x: -26, y: -20, size: 0.7, skew: -8, sx: 1, sy: 1, rotY: 38, rot: -6, spreadH: 0.3, spreadV: 0.3, cut: 0.4, streaks: 0 },
+  /* aseguradoras */ { x: -18, y: 10, size: 1.15, skew: -20, sx: 1.8, sy: 0.5, rotY: 0, rot: 0, spreadH: 0.8, spreadV: 0, cut: 0.8, streaks: 0.7 },
+  /* empresas     */ { x: 0, y: 0, size: 1.45, skew: 0, sx: 1, sy: 1, rotY: -48, rot: 0, spreadH: 0, spreadV: 0, cut: 0.1, streaks: 0 },
+  /* proceso      */ { x: 24, y: 6, size: 1, skew: 0, sx: 0.7, sy: 1.45, rotY: 0, rot: 4, spreadH: 0, spreadV: 1, cut: 0.6, streaks: 0 },
+  /* reseñas      */ { x: 0, y: -6, size: 1.25, skew: -10, sx: 1.2, sy: 1, rotY: 20, rot: -8, spreadH: 1, spreadV: 1, cut: 0.9, streaks: 0.4 },
+  /* preguntas    */ { x: -24, y: 4, size: 0.9, skew: -12, sx: 1.1, sy: 0.9, rotY: -26, rot: 0, spreadH: 0.4, spreadV: 0.2, cut: 0.5, streaks: 0 },
+  /* contacto     */ { x: 22, y: -6, size: 1.1, skew: 0, sx: 1, sy: 1, rotY: 0, rot: 0, spreadH: 0, spreadV: 0, cut: 0.12, streaks: 0 },
+];
+// cada pose rige en el centro de su sección; antes y después se mantiene la del extremo
+const LOOK_AT = [0, ...LOOKS.map((_, i) => i + 0.5), LOOKS.length + 0.5];
+const lookValues = (k: keyof Look) => [LOOKS[0][k], ...LOOKS.map((l) => l[k]), LOOKS[LOOKS.length - 1][k]];
+
+// Índice continuo de sección según el centro de la pantalla: 3.5 = mitad de la sección 3 (el taller)
+function useSectionIndex(p: MotionValue<number>) {
+  const bounds = useRef<{ tops: number[]; heights: number[]; max: number }>({ tops: [], heights: [], max: 1 });
+  useEffect(() => {
+    const measure = () => {
+      const els = [...document.querySelectorAll('main > section')] as HTMLElement[];
+      bounds.current = {
+        tops: els.map((e) => e.getBoundingClientRect().top + window.scrollY),
+        heights: els.map((e) => e.offsetHeight),
+        max: Math.max(1, document.documentElement.scrollHeight - window.innerHeight),
+      };
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(document.body);
+    return () => ro.disconnect();
+  }, []);
+  return useTransform(p, (v) => {
+    const { tops, heights, max } = bounds.current;
+    const y = v * max + window.innerHeight / 2;
+    for (let i = tops.length - 1; i >= 0; i--) {
+      if (y >= tops[i]) return Math.min(i + (y - tops[i]) / heights[i], tops.length + 0.5);
+    }
+    return 0;
+  });
+}
+
+function LogoPart({ part, h, v, dash, offset }: { part: (typeof LOGO_PARTS)[number]; h: MotionValue<number>; v: MotionValue<number>; dash: MotionValue<string>; offset: MotionValue<number> }) {
+  const x = useTransform([h, v], ([a, b]: number[]) => a * part.h[0] + b * part.v[0]);
+  const y = useTransform([h, v], ([a, b]: number[]) => a * part.h[1] + b * part.v[1]);
   return (
-    <motion.g style={{ x, y, rotate, transformBox: 'fill-box', transformOrigin: 'center' }}>
+    <motion.g style={{ x, y }}>
       {GLOW.map((l, i) => (
         <motion.path
           key={l.w}
@@ -159,14 +207,14 @@ function LogoPart({ part, open, dash, offset }: { part: (typeof LOGO_PARTS)[numb
   );
 }
 
-// Líneas de luz que salen del logo y corren de punta a punta de la pantalla: [altura en vh, velocidad, sentido]
+// Líneas de luz que cruzan la pantalla de punta a punta: [altura en vh, velocidad, sentido]
 const STREAKS: [number, number, 1 | -1][] = [
   [27, 2.2, 1], [33, 3.1, -1], [41, 1.7, 1], [46, 2.6, -1], [52, 3.4, 1], [58, 1.9, -1], [63, 2.8, 1],
 ];
 
-function Streak({ p, open, y, speed, dir, i }: { p: MotionValue<number>; open: MotionValue<number>; y: number; speed: number; dir: 1 | -1; i: number }) {
+function Streak({ p, str, y, speed, dir, i }: { p: MotionValue<number>; str: MotionValue<number>; y: number; speed: number; dir: 1 | -1; i: number }) {
   // un solo tramo por línea (el hueco es más largo que la línea) que viaja de un costado al otro
-  const len = useTransform(open, (o) => 0.08 + 0.3 * o);
+  const len = useTransform(str, (o) => 0.08 + 0.3 * o);
   const dash = useTransform(len, (l) => `${l.toFixed(4)} 3`);
   const offset = useTransform([p, len], ([v, l]: number[]) => {
     const t = (v * speed * 6 + i * 0.37) % 1;
@@ -193,30 +241,40 @@ function Streak({ p, open, y, speed, dir, i }: { p: MotionValue<number>; open: M
   );
 }
 
-// El logo hecho luz, anclado a la derecha (no rebota por la pantalla). Con el scroll se deforma: se inclina,
-// se estira, sus piezas se abren hacia los costados, el contorno se corta en tramos y de él salen líneas que
-// cruzan la pantalla. Al llegar al contacto se vuelve a armar entero.
+// El logo hecho luz: en cada sección toma una pose distinta (ver LOOKS) y pasa de una a otra con el scroll.
+// Encima, un vaivén suave y los tramos que corren por el contorno hacen que nunca quede quieto.
 function LogoLight({ p, reduce }: { p: MotionValue<number>; reduce: boolean | null }) {
-  // 0 = logo armado, 1 = deformado del todo
-  const open = useTransform(p, [0, 0.27, 0.42, 0.74, 0.88, 1], [0, 0, 1, 1, 0, 0]);
-  const y = useTransform(p, [0, 1], ['16vh', '26vh']); // apenas baja: acompaña, no viaja
-  const skewX = useTransform(open, [0, 1], [0, -22]);
-  const scaleX = useTransform(open, [0, 1], [1, 1.45]);
-  const scaleY = useTransform(open, [0, 1], [1, 0.72]);
-  const rotateY = useTransform(p, (v) => Math.sin(v * Math.PI * 4) * 18 * open.get());
-  const dash = useTransform(open, (o) => {
-    const seg = 0.2 * (1 - 0.8 * o); // el contorno se corta en 5 tramos que se achican
+  const s = useSectionIndex(p);
+  const narrow = () => window.innerWidth < 768; // en celular se corre menos a los costados
+  const x = useTransform(s, LOOK_AT, lookValues('x'));
+  const y = useTransform(s, LOOK_AT, lookValues('y'));
+  const xs = useTransform([x, s], ([v, i]: number[]) => `${(v + Math.sin(i * Math.PI) * 3) * (narrow() ? 0.35 : 1)}vw`);
+  const ys = useTransform([y, s], ([v, i]: number[]) => `${v + Math.cos(i * Math.PI * 1.3) * 2.5}vh`);
+  const scale = useTransform(s, LOOK_AT, lookValues('size'));
+  const skewX = useTransform(s, LOOK_AT, lookValues('skew'));
+  const scaleX = useTransform(s, LOOK_AT, lookValues('sx'));
+  const scaleY = useTransform(s, LOOK_AT, lookValues('sy'));
+  const rotY = useTransform(s, LOOK_AT, lookValues('rotY'));
+  const rotateY = useTransform([rotY, s], ([v, i]: number[]) => v + Math.sin(i * Math.PI * 2) * 10);
+  const rot = useTransform(s, LOOK_AT, lookValues('rot'));
+  const rotate = useTransform([rot, s], ([v, i]: number[]) => v + Math.sin(i * Math.PI * 0.7) * 4);
+  const h = useTransform(s, LOOK_AT, lookValues('spreadH'));
+  const v = useTransform(s, LOOK_AT, lookValues('spreadV'));
+  const cut = useTransform(s, LOOK_AT, lookValues('cut'));
+  const dash = useTransform(cut, (c) => {
+    const seg = 0.2 * (1 - 0.8 * c); // el contorno en 5 tramos que se achican
     return `${seg.toFixed(4)} ${(0.2 - seg).toFixed(4)}`;
   });
-  const offset = useTransform(p, (v) => -v * 3); // los tramos corren por el contorno
-  const streaksO = useTransform(open, [0, 0.3, 1], [0, 0.4, 1]);
+  const offset = useTransform(p, (t) => -t * 4); // los tramos corren por el contorno mientras scrolleás
+  const str = useTransform(s, LOOK_AT, lookValues('streaks'));
+
   if (reduce)
     return (
-      <div className="absolute right-[4vw] top-[16vh] h-[44vmin] w-[44vmin]">
+      <div className="absolute left-1/2 top-1/2 -ml-[22vmin] -mt-[22vmin] h-[44vmin] w-[44vmin]">
         <svg viewBox="0 0 1000 1000" className="h-full w-full overflow-visible">
           {LOGO_PARTS.map((part, i) => (
             <g key={i}>
-              <LogoPart part={part} open={STILL} dash={STILL_DASH} offset={STILL} />
+              <LogoPart part={part} h={STILL} v={STILL} dash={STILL_DASH} offset={STILL} />
             </g>
           ))}
         </svg>
@@ -224,29 +282,24 @@ function LogoLight({ p, reduce }: { p: MotionValue<number>; reduce: boolean | nu
     );
   return (
     <>
-      <motion.svg
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        style={{ opacity: streaksO }}
-        className="absolute inset-0 h-full w-full will-change-[opacity]"
-      >
+      <motion.svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ opacity: str }} className="absolute inset-0 h-full w-full will-change-[opacity]">
         {STREAKS.map(([sy, speed, dir], i) => (
           <g key={i}>
-            <Streak p={p} open={open} y={sy} speed={speed} dir={dir} i={i} />
+            <Streak p={p} str={str} y={sy} speed={speed} dir={dir} i={i} />
           </g>
         ))}
       </motion.svg>
-      <motion.div style={{ y }} className="absolute right-[4vw] h-[44vmin] w-[44vmin] will-change-transform max-md:-right-[12vw]">
+      <motion.div style={{ x: xs, y: ys, scale }} className="absolute left-1/2 top-1/2 -ml-[22vmin] -mt-[22vmin] h-[44vmin] w-[44vmin] will-change-transform">
         {/* la luz que tira sobre la página */}
         <div className="absolute -inset-[55%] bg-[radial-gradient(circle,rgb(61_220_132/0.13),transparent_62%)]" />
         <motion.svg
           viewBox="0 0 1000 1000"
-          style={{ skewX, scaleX, scaleY, rotateY, transformPerspective: 900 }}
+          style={{ skewX, scaleX, scaleY, rotateY, rotate, transformPerspective: 900 }}
           className="absolute inset-0 h-full w-full overflow-visible"
         >
           {LOGO_PARTS.map((part, i) => (
             <g key={i}>
-              <LogoPart part={part} open={open} dash={dash} offset={offset} />
+              <LogoPart part={part} h={h} v={v} dash={dash} offset={offset} />
             </g>
           ))}
         </motion.svg>
