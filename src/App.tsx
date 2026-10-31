@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 import {
   motion,
+  motionValue,
   MotionConfig,
   useReducedMotion,
   useScroll,
@@ -24,7 +25,6 @@ import {
   Star,
   SunDim,
 } from 'lucide-react';
-import { mountPhotoTour } from './PhotoTour';
 import Lenis from 'lenis';
 import 'lenis/dist/lenis.css';
 
@@ -44,20 +44,20 @@ const RATING = { score: '4.7', count: 173 };
 const SERVICES = [
   { icon: Car, title: 'Parabrisas y lunetas', text: 'Colocación y reemplazo de cristales delanteros y traseros.' },
   { icon: Layers, title: 'Cristales laterales', text: 'Puertas, ventiletes y demás piezas de cristalería automotor.' },
-  { icon: Crosshair, title: 'Reparación de impactos', text: 'Tratamiento de impactos en parabrisas, según evaluación.' },
+  { icon: Crosshair, title: 'Reparación de parabrisas', text: 'Intervención sobre impactos en el parabrisas, según evaluación.' },
   { icon: KeyRound, title: 'Cerrajería', text: 'Cerraduras, llaves y mecanismos de apertura del vehículo.' },
   { icon: ArrowUpDown, title: 'Levantavidrios', text: 'Reparación y reemplazo de mecanismos alzacristales.' },
   { icon: SunDim, title: 'Polarizados', text: 'Colocación de láminas polarizadas.' },
   { icon: Hash, title: 'Grabados', text: 'Grabado de patente en todos los cristales.' },
 ];
 
-const GLASS_BRANDS = ['Saint-Gobain Sekurit', 'Fuyao', 'XYG', 'Favicur', 'Cristem'];
+const GLASS_BRANDS = ['Pilkington', 'Saint-Gobain Sekurit', 'Fuyao'];
 
 const INSURERS = [
   'Allianz', 'Answer', 'ATM', 'La Caja', 'Chubb', 'Digna', 'Experta', 'La Equitativa', 'Federación Patronal',
-  'Galeno', 'Galicia Seguros', 'La Holando', 'Meridional', 'Iaorana', 'Integrity', 'Mercantil Andina',
+  'Galeno', 'Galicia Seguros', 'La Holando', 'Meridional Seguros', 'Iaorana', 'Integrity', 'Mercantil Andina',
   'Metropol', 'Nación', 'Nivel', 'Paraná', 'Provincia', 'Providencia', 'Río Uruguay', 'Rivadavia',
-  'Sancor', 'SMG', 'La Segunda', 'Segurcoop', 'San Cristóbal', 'Triunfo', 'Victoria', 'Zurich',
+  'Sancor', 'SMG', 'La Segunda', 'Segurcoop', 'San Cristóbal', 'Triunfo', 'Victoria Seguros', 'Zurich',
 ];
 
 const STEPS = [
@@ -107,12 +107,158 @@ function Eyebrow({ children }: { children: ReactNode }) {
   );
 }
 
+const STILL = motionValue(0);
+const STILL_DASH = motionValue('1 0');
+
+// Piezas del logo (de public/logo.svg): el trazo inclinado, la P y la L
+const LOGO_PARTS = [
+  { d: 'M76.97 848.75H199.45L344.49 557.39H389.41L437.31 463.7H285.19Z', core: '#eafff3', drift: [-260, 30, -4] },
+  {
+    d: 'M584.94,463.7l-52.41,101.42h202.94s104.55-2,163.21-95.26c0,0,31.3-37.23,19.72-140.27-11.58-103.04-48.7-126.58-58.12-138.08-9.42-11.51-46.07-40.73-148.08-40.72h-259.99l-57.24,114.89h315.07c21.62,0,42.94,6.17,60.73,18.48,21.25,14.71,41.76,40.36,38.86,84.14,0,0-.1,15.43-9.41,35.07-17.63,37.17-55.65,60.36-96.79,60.36h-118.49Z',
+    core: '#eafff3',
+    drift: [170, -40, 3],
+  },
+  {
+    d: 'M738.7,848.75h-478.01l241.3-489.05h120.54l-195.96,397.94h280.05s40.77,2.54,40.77-46.73v-89.79l109.3-38.57v134.3c0,2.87.04,5.75.1,8.63.36,18.36-20.51,123.27-118.08,123.27Z',
+    core: 'var(--color-accent)',
+    drift: [-90, 60, -2],
+  },
+];
+
+// Trazo con brillo: núcleo nítido + halos cada vez más anchos y tenues (sin filtros: no redibuja caro)
+const GLOW = [
+  { w: 26, o: 0.04 },
+  { w: 12, o: 0.09 },
+  { w: 4.5, o: 0.22 },
+  { w: 1.5, o: 0.8 },
+];
+
+function LogoPart({ part, open, dash, offset }: { part: (typeof LOGO_PARTS)[number]; open: MotionValue<number>; dash: MotionValue<string>; offset: MotionValue<number> }) {
+  const [dx, dy, rot] = part.drift;
+  const x = useTransform(open, (o) => o * dx);
+  const y = useTransform(open, (o) => o * dy);
+  const rotate = useTransform(open, (o) => o * rot);
+  return (
+    <motion.g style={{ x, y, rotate, transformBox: 'fill-box', transformOrigin: 'center' }}>
+      {GLOW.map((l, i) => (
+        <motion.path
+          key={l.w}
+          d={part.d}
+          pathLength={1}
+          fill="none"
+          stroke={i === GLOW.length - 1 ? part.core : 'var(--color-accent)'}
+          strokeOpacity={l.o}
+          strokeWidth={l.w}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+          style={{ strokeDasharray: dash, strokeDashoffset: offset }}
+        />
+      ))}
+    </motion.g>
+  );
+}
+
+// Líneas de luz que salen del logo y corren de punta a punta de la pantalla: [altura en vh, velocidad, sentido]
+const STREAKS: [number, number, 1 | -1][] = [
+  [27, 2.2, 1], [33, 3.1, -1], [41, 1.7, 1], [46, 2.6, -1], [52, 3.4, 1], [58, 1.9, -1], [63, 2.8, 1],
+];
+
+function Streak({ p, open, y, speed, dir, i }: { p: MotionValue<number>; open: MotionValue<number>; y: number; speed: number; dir: 1 | -1; i: number }) {
+  // un solo tramo por línea (el hueco es más largo que la línea) que viaja de un costado al otro
+  const len = useTransform(open, (o) => 0.08 + 0.3 * o);
+  const dash = useTransform(len, (l) => `${l.toFixed(4)} 3`);
+  const offset = useTransform([p, len], ([v, l]: number[]) => {
+    const t = (v * speed * 6 + i * 0.37) % 1;
+    const pos = t * (1 + l) - l; // de -l (afuera a la izquierda) a 1 (afuera a la derecha)
+    return -(dir === 1 ? pos : 1 - l - pos);
+  });
+  return (
+    <g>
+      {GLOW.map((l, k) => (
+        <motion.path
+          key={l.w}
+          d={`M0 ${y} H100`}
+          pathLength={1}
+          fill="none"
+          stroke={k === GLOW.length - 1 ? '#eafff3' : 'var(--color-accent)'}
+          strokeOpacity={l.o}
+          strokeWidth={l.w * 0.7}
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+          style={{ strokeDasharray: dash, strokeDashoffset: offset }}
+        />
+      ))}
+    </g>
+  );
+}
+
+// El logo hecho luz, anclado a la derecha (no rebota por la pantalla). Con el scroll se deforma: se inclina,
+// se estira, sus piezas se abren hacia los costados, el contorno se corta en tramos y de él salen líneas que
+// cruzan la pantalla. Al llegar al contacto se vuelve a armar entero.
+function LogoLight({ p, reduce }: { p: MotionValue<number>; reduce: boolean | null }) {
+  // 0 = logo armado, 1 = deformado del todo
+  const open = useTransform(p, [0, 0.27, 0.42, 0.74, 0.88, 1], [0, 0, 1, 1, 0, 0]);
+  const y = useTransform(p, [0, 1], ['16vh', '26vh']); // apenas baja: acompaña, no viaja
+  const skewX = useTransform(open, [0, 1], [0, -22]);
+  const scaleX = useTransform(open, [0, 1], [1, 1.45]);
+  const scaleY = useTransform(open, [0, 1], [1, 0.72]);
+  const rotateY = useTransform(p, (v) => Math.sin(v * Math.PI * 4) * 18 * open.get());
+  const dash = useTransform(open, (o) => {
+    const seg = 0.2 * (1 - 0.8 * o); // el contorno se corta en 5 tramos que se achican
+    return `${seg.toFixed(4)} ${(0.2 - seg).toFixed(4)}`;
+  });
+  const offset = useTransform(p, (v) => -v * 3); // los tramos corren por el contorno
+  const streaksO = useTransform(open, [0, 0.3, 1], [0, 0.4, 1]);
+  if (reduce)
+    return (
+      <div className="absolute right-[4vw] top-[16vh] h-[44vmin] w-[44vmin]">
+        <svg viewBox="0 0 1000 1000" className="h-full w-full overflow-visible">
+          {LOGO_PARTS.map((part, i) => (
+            <g key={i}>
+              <LogoPart part={part} open={STILL} dash={STILL_DASH} offset={STILL} />
+            </g>
+          ))}
+        </svg>
+      </div>
+    );
+  return (
+    <>
+      <motion.svg
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        style={{ opacity: streaksO }}
+        className="absolute inset-0 h-full w-full will-change-[opacity]"
+      >
+        {STREAKS.map(([sy, speed, dir], i) => (
+          <g key={i}>
+            <Streak p={p} open={open} y={sy} speed={speed} dir={dir} i={i} />
+          </g>
+        ))}
+      </motion.svg>
+      <motion.div style={{ y }} className="absolute right-[4vw] h-[44vmin] w-[44vmin] will-change-transform max-md:-right-[12vw]">
+        {/* la luz que tira sobre la página */}
+        <div className="absolute -inset-[55%] bg-[radial-gradient(circle,rgb(61_220_132/0.13),transparent_62%)]" />
+        <motion.svg
+          viewBox="0 0 1000 1000"
+          style={{ skewX, scaleX, scaleY, rotateY, transformPerspective: 900 }}
+          className="absolute inset-0 h-full w-full overflow-visible"
+        >
+          {LOGO_PARTS.map((part, i) => (
+            <g key={i}>
+              <LogoPart part={part} open={open} dash={dash} offset={offset} />
+            </g>
+          ))}
+        </motion.svg>
+      </motion.div>
+    </>
+  );
+}
+
 function Backdrop() {
   const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll();
   const p = useSpring(scrollYProgress, { stiffness: 50, damping: 20 });
-  const x1 = useTransform(p, [0, 1], ['-20vw', '50vw']);
-  const y1 = useTransform(p, [0, 1], ['-10vh', '70vh']);
   const x2 = useTransform(p, [0, 1], ['60vw', '-10vw']);
   const y2 = useTransform(p, [0, 1], ['50vh', '-10vh']);
   const imgScale = useTransform(p, [0, 1], [1.1, 1.5]);
@@ -129,14 +275,11 @@ function Backdrop() {
       {/* Las luces van en capa propia (will-change): si no, al moverse obligan a redibujar todo el
           fondo en cada frame. Medido con scroll continuo: 12–17 ms → 7 ms por frame. */}
       <motion.div
-        style={reduce ? undefined : { x: x1, y: y1 }}
-        className="absolute h-[55vmax] w-[55vmax] bg-[radial-gradient(circle,rgb(61_220_132/0.16),transparent_65%)] will-change-transform"
-      />
-      <motion.div
         style={reduce ? undefined : { x: x2, y: y2 }}
         className="absolute h-[65vmax] w-[65vmax] bg-[radial-gradient(circle,rgb(0_91_46/0.5),transparent_65%)] will-change-transform"
       />
       <div className="grid-lines absolute inset-0" />
+      <LogoLight p={p} reduce={reduce} />
       <div className="absolute inset-0 bg-gradient-to-b from-ink/30 via-transparent to-ink/80" />
     </div>
   );
@@ -177,7 +320,6 @@ function Hero() {
   const contentY = useTransform(p, [0, 0.15], [0, -60]);
   const msgO = useTransform(p, [0.2, 0.28, 0.5, 0.57], [0, 1, 1, 0]);
   const msgY = useTransform(p, [0.2, 0.28], [40, 0]);
-  const fixO = useTransform(p, [0.42, 0.48], [0, 1]);
   const msg2O = useTransform(p, [0.7, 0.78, 0.88, 0.96], [0, 1, 1, 0]);
   const hintO = useTransform(p, [0, 0.03], [1, 0]);
   const sceneO = useTransform(p, [0.9, 1], [1, 0]); // funde a negro para empalmar con la trayectoria
@@ -218,8 +360,8 @@ function Hero() {
             transition={{ delay: 0.5, duration: 0.8 }}
             className="mx-auto mt-8 max-w-xl text-lg text-mute"
           >
-            Parabrisas, lunetas, cristales laterales, cerrajería y levantavidrios. Taller cubierto en Lomas del Mirador,
-            prestador de más de 30 aseguradoras.
+            Parabrisas, lunetas y cristales laterales. Reparación de parabrisas, cerrajería, levantavidrios, polarizados y
+            grabados. En Lomas del Mirador, trabajando con más de 30 compañías aseguradoras.
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -239,9 +381,6 @@ function Hero() {
 
         <motion.div style={{ opacity: msgO, y: msgY }} className="pointer-events-none absolute bottom-[12%] max-w-4xl px-6 text-center will-change-[transform,opacity]">
           <p className="font-display text-5xl font-bold leading-tight md:text-7xl">Cada impacto tiene solución.</p>
-          <motion.p style={{ opacity: fixO }} className="mt-4 text-xl text-accent md:text-2xl">
-            Y la dejamos como nueva.
-          </motion.p>
         </motion.div>
 
         <motion.div style={{ opacity: msg2O }} className="pointer-events-none absolute max-w-4xl px-6 text-center will-change-[opacity]">
@@ -331,7 +470,77 @@ function Trayectoria() {
   );
 }
 
+// Avanza la cinta sola moviendo scrollLeft (no transform), así también se puede mover a mano:
+// con el dedo (scroll nativo) o arrastrando con el mouse. No se pausa: si la movés, sigue desde ahí.
+// La lista va duplicada; al pasar la mitad salta al principio (y al revés), así no tiene fin.
+function useAutoScroll(ref: RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const auto = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let pos = el.scrollLeft;
+    let touching = false;
+    let drag: { x: number; id: number } | null = null;
+    let last = performance.now();
+    let raf = 0;
+
+    const wrap = (v: number) => {
+      const half = el.scrollWidth / 2;
+      return v >= half ? v - half : v < 0 ? v + half : v;
+    };
+    const onTouchStart = () => (touching = true);
+    const onTouchEnd = () => (touching = false);
+    // arrastre con mouse (en touch el scroll nativo ya lo hace)
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === 'touch') return;
+      drag = { x: e.clientX, id: e.pointerId };
+      el.setPointerCapture(e.pointerId);
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      pos = wrap(pos - (e.clientX - drag.x));
+      drag.x = e.clientX;
+      el.scrollLeft = pos;
+    };
+    const onUp = () => (drag = null);
+
+    const tick = (t: number) => {
+      raf = requestAnimationFrame(tick);
+      const dt = Math.min(0.05, (t - last) / 1000);
+      last = t;
+      // si se movió por fuera (dedo, inercia, trackpad), seguir desde donde quedó
+      if (Math.abs(el.scrollLeft - pos) > 2) pos = el.scrollLeft;
+      if (touching) return; // con el dedo apoyado no peleamos con el scroll nativo
+      // px por segundo: en celular la tarjeta ocupa casi toda la pantalla, así que va más rápido
+      if (auto && !drag) pos += (window.innerWidth < 768 ? 110 : 60) * dt;
+      pos = wrap(pos);
+      el.scrollLeft = pos;
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchend', onTouchEnd);
+    el.addEventListener('touchcancel', onTouchEnd);
+    el.addEventListener('pointerdown', onDown);
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointercancel', onUp);
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchend', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchEnd);
+      el.removeEventListener('pointerdown', onDown);
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointercancel', onUp);
+    };
+  }, [ref]);
+}
+
 function Servicios() {
+  const strip = useRef<HTMLDivElement>(null);
+  useAutoScroll(strip);
   const card = (s: (typeof SERVICES)[number], i: number, copy: boolean) => (
     <article key={`${copy}-${s.title}`} aria-hidden={copy || undefined} className="pr-6">
       <div className="flex h-[22rem] w-[78vw] flex-col justify-between rounded-3xl p-8 glass transition-colors hover:bg-white/[0.07] md:w-[24rem]">
@@ -355,50 +564,40 @@ function Servicios() {
         <Eyebrow>Servicios</Eyebrow>
         <h2 className="font-display text-4xl font-bold md:text-6xl">Todo lo que tu auto necesita en cristales.</h2>
       </div>
-      {/* Cinta infinita: la lista va duplicada y la animación corre -50% (ver .marquee en index.css) */}
-      <div className="marquee-mask overflow-hidden motion-reduce:overflow-x-auto">
-        <div className="marquee flex w-max">
+      {/* Cinta infinita: avanza sola y se mueve con el dedo o arrastrando (ver useAutoScroll) */}
+      <div ref={strip} className="marquee-mask no-scrollbar cursor-grab select-none overflow-x-auto active:cursor-grabbing">
+        <div className="flex w-max">
           {SERVICES.map((s, i) => card(s, i, false))}
           {SERVICES.map((s, i) => card(s, i, true))}
         </div>
       </div>
-      <div className="mx-auto mt-12 flex w-full max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-6">
-        <span className="text-xs uppercase tracking-[0.25em] text-mute">Cristales de primeras marcas</span>
-        {GLASS_BRANDS.map((b) => (
-          <span key={b} className="text-sm text-white/70">{b}</span>
-        ))}
-      </div>
+      <p className="mx-auto mt-14 w-full max-w-6xl px-6 text-lg text-mute">
+        Trabajamos con <span className="text-white">{GLASS_BRANDS.slice(0, -1).join(', ')}</span>,{' '}
+        <span className="text-white">{GLASS_BRANDS.at(-1)}</span> y cristales de todas las marcas.
+      </p>
     </section>
   );
 }
 
+// Plano isométrico del taller (dibujo propio), fijo. El PNG no tiene fondo: queda sobre la grilla de la página.
 function Taller() {
-  const [ref, p] = useSection();
-  const canvas = useRef<HTMLCanvasElement>(null);
-  useScene(canvas, p, () => Promise.resolve(mountPhotoTour));
-  // los tiempos de las fotos están en PhotoTour.ts (STEPS); acá solo los textos
-  const titleO = useTransform(p, [0, 0.04, 0.08], [1, 1, 0]);
-  const cap1 = useTransform(p, [0.09, 0.14, 0.28, 0.34], [0, 1, 1, 0]);
-  const cap2 = useTransform(p, [0.4, 0.46, 0.88, 0.95], [0, 1, 1, 0]);
-  const sceneO = useTransform(p, [0.95, 1], [1, 0]);
-
   return (
-    <section id="taller" ref={ref} className="relative h-[640vh]">
-      <div className="sticky top-0 h-svh overflow-hidden">
-        <motion.canvas ref={canvas} role="img" aria-label="Recorrido por las fotos reales del taller: la esquina, el portón y el salón con el stock de cristales" style={{ opacity: sceneO }} className="absolute inset-0 h-full w-full" />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent via-45% to-transparent" />
-        <motion.div style={{ opacity: titleO }} className="absolute inset-x-0 bottom-[9%] text-center will-change-[opacity]">
-          <Eyebrow>El taller</Eyebrow>
-          <h2 className="font-display text-5xl font-bold md:text-7xl">Vení a conocernos.</h2>
-        </motion.div>
-        <motion.div style={{ opacity: cap1 }} className="absolute inset-x-0 bottom-12 mx-auto max-w-6xl px-6 will-change-[opacity]">
-          <Eyebrow>Lomas del Mirador</Eyebrow>
-          <p className="max-w-2xl font-display text-4xl font-bold md:text-6xl">Cerrito 2399, en la esquina. Con entrada de vehículos.</p>
-        </motion.div>
-        <motion.div style={{ opacity: cap2 }} className="absolute inset-x-0 bottom-12 mx-auto max-w-6xl px-6 will-change-[opacity]">
-          <Eyebrow>Por dentro</Eyebrow>
-          <p className="max-w-2xl font-display text-4xl font-bold md:text-6xl">Taller cubierto y stock propio de cristales.</p>
-        </motion.div>
+    <section id="taller" className="relative px-6 py-24 md:py-32">
+      <div className="mx-auto max-w-6xl">
+        <Eyebrow>El taller</Eyebrow>
+        <h2 className="font-display text-4xl font-bold md:text-6xl">Vení a conocernos.</h2>
+        <p className="mt-6 max-w-2xl text-lg text-mute">
+          Cerrito 2399, en la esquina, con entrada de vehículos. Adentro, el área de trabajo, nuestro stock de cristales y la
+          oficina de atención.
+        </p>
+        <img
+          src="/taller-mapa.png"
+          alt="Plano isométrico del taller: la entrada con el cartel en la esquina, el área de trabajo, las estanterías con stock de cristales y las oficinas"
+          loading="lazy"
+          width={1370}
+          height={953}
+          className="-mx-4 mt-10 block h-auto w-[calc(100%+2rem)] max-w-none md:mx-auto md:mt-14 md:w-[88%]"
+        />
       </div>
     </section>
   );
@@ -416,10 +615,11 @@ function Aseguradoras() {
       <div className="mx-auto mb-16 max-w-6xl px-6">
         <Eyebrow>Aseguradoras</Eyebrow>
         <h2 className="max-w-3xl font-display text-4xl font-bold md:text-6xl">
-          Prestadores de más de <span className="text-accent">30 compañías</span>.
+          Experiencia con más de <span className="text-accent">30 compañías</span> aseguradoras.
         </h2>
         <p className="mt-6 max-w-2xl text-lg text-mute">
-          Atendemos asegurados de forma directa y a través de intermediarios. Si tu seguro cubre cristales, coordinamos todo.
+          Trabajamos con ellas mediante vínculos comerciales directos y trabajos canalizados a través de intermediarios. Si tu
+          seguro cubre cristales, coordinamos todo.
         </p>
       </div>
       {rows.map((row, r) => (
@@ -499,8 +699,66 @@ function Proceso() {
   );
 }
 
+// Reseñas reales de Google Maps (copiadas a mano de la ficha). Mientras esté vacía, la sección no se muestra.
+const REVIEWS: { name: string; text: string }[] = [
+  { name: 'Diego', text: 'Problema solucionado!!! Si buscás buena atención, buen servicio y buen precio en todo lo referente a parabrisas y máquinas levantavidrios, este es el lugar!!!' },
+  { name: 'Sebastián Verón', text: 'Excelente atención! Fui por el cambio del tambor de mi cerradura por mi seguro y tanto por WhatsApp como presencial fue muy buena la atención. Llevé el auto a la mañana y antes del mediodía ya lo tenía.' },
+  { name: 'Ezequiel Spinello', text: 'Muy buena atención, rápido y muy prolijos. Llegué ahí por el seguro, se me rompió el parabrisas. Los recomiendo.' },
+  { name: 'Mario Bosco', text: 'Compré la luneta de mi SUV y la señora que me atendió, muy amable, me allanó por completo el trámite de la compra, y al colocarlo no tuve ningún problema.' },
+  { name: 'Tamara Petracca', text: 'Excelente servicio! Muy rápido, súper amables, me salvaron porque el auto lo necesitaba urgente! Recomiendo.' },
+  { name: 'Eduardo Q', text: 'Excelente servicio, me cambiaron el parabrisas súper rápido y eficientemente en "el mugroso" (Bora línea vieja). Gracias.' },
+  { name: 'Gastón Marcelo', text: 'Excelente atención! Tanto de las chicas de la administración como los chicos del taller. Impecables!' },
+];
+
+// Tarjeta que "vuela": cada una flota y gira distinto según el scroll
+function ReviewCard({ p, i, r }: { p: MotionValue<number>; i: number; r: (typeof REVIEWS)[number] }) {
+  const k = ((i * 7) % 5) - 2; // -2..2, distinto por tarjeta
+  const y = useTransform(p, [0, 1], [k * 30, -k * 30]);
+  const rotate = useTransform(p, [0, 1], [k * 1.5, -k * 1.5]);
+  return (
+    <motion.figure style={{ y, rotate }} className="w-[80vw] shrink-0 rounded-3xl p-7 glass will-change-transform md:w-[24rem]">
+      <div className="flex gap-1 text-accent">
+        {Array.from({ length: 5 }, (_, j) => <Star key={j} size={16} className="fill-accent" />)}
+      </div>
+      <blockquote className="mt-4 line-clamp-6 text-lg leading-relaxed">“{r.text}”</blockquote>
+      <figcaption className="mt-5 text-sm text-mute">{r.name} · Google</figcaption>
+    </motion.figure>
+  );
+}
+
+function Resenas() {
+  const [ref, p] = useSection(['start end', 'end start']);
+  const x1 = useTransform(p, [0, 1], ['5%', '-35%']);
+  const x2 = useTransform(p, [0, 1], ['-35%', '5%']);
+  if (!REVIEWS.length) return null;
+  const half = Math.ceil(REVIEWS.length / 2);
+  const rows = [REVIEWS.slice(0, half), REVIEWS.slice(half)];
+  return (
+    <section ref={ref} className="relative overflow-hidden py-32">
+      <div className="mx-auto mb-16 max-w-6xl px-6">
+        <Eyebrow>Reseñas</Eyebrow>
+        <h2 className="max-w-3xl font-display text-4xl font-bold md:text-6xl">
+          {RATING.score} en Google, con <span className="text-accent">{RATING.count} reseñas</span>.
+        </h2>
+        <a href={MAPS} target="_blank" rel="noopener" className="mt-6 inline-flex items-center gap-2 text-accent hover:brightness-125">
+          Ver todas en Google Maps <ArrowRight size={18} />
+        </a>
+      </div>
+      {rows.map((row, ri) => (
+        <motion.div key={ri} style={{ x: ri ? x2 : x1 }} className="flex w-max gap-6 py-6 will-change-transform">
+          {[...row, ...row].map((r, i) => (
+            <span key={i} className="contents">
+              <ReviewCard p={p} i={i + ri * 3} r={r} />
+            </span>
+          ))}
+        </motion.div>
+      ))}
+    </section>
+  );
+}
+
 const FAQ = [
-  { q: '¿Trabajan con mi seguro?', a: 'Somos prestadores de más de 30 aseguradoras, en forma directa o a través de intermediarios. Escribinos con los datos de tu póliza y te confirmamos cómo seguir según tu compañía.' },
+  { q: '¿Trabajan con mi seguro?', a: 'Trabajamos con más de 30 compañías aseguradoras, en forma directa o a través de intermediarios. Escribinos con los datos de tu póliza y te confirmamos cómo seguir según tu compañía.' },
   { q: '¿Trabajan con empresas y concesionarias?', a: 'Sí. Si tenés una empresa o una concesionaria y querés consultar, escribinos por WhatsApp o llamanos y lo vemos.' },
   { q: '¿Cuánto tarda el cambio de un parabrisas?', a: 'Muchos trabajos se resuelven en el día. Depende de que tengamos el cristal de tu vehículo en stock o de cuánto tarde en llegar.' },
   { q: '¿Se puede reparar un impacto sin cambiar el parabrisas?', a: 'Depende del tamaño y la ubicación del impacto. Lo evaluamos y te decimos si conviene reparar o reemplazar.' },
@@ -641,6 +899,7 @@ export default function App() {
         <Aseguradoras />
         <Empresas />
         <Proceso />
+        <Resenas />
         <Preguntas />
         <Contacto />
       </main>

@@ -22,8 +22,10 @@ body {
 h1, h2, h3 { text-wrap: balance; }
 p { text-wrap: pretty; }
 
+/* Tarjetas: velo blanco sobre una base oscura casi opaca, así las luces del fondo pasan por detrás
+   y no se ven a través (backdrop-blur saldría caro en las cintas que se mueven todo el tiempo) */
 .glass {
-  background: rgb(255 255 255 / 0.04);
+  background: linear-gradient(rgb(255 255 255 / 0.04), rgb(255 255 255 / 0.04)), rgb(10 13 11 / 0.9);
   border: 1px solid rgb(255 255 255 / 0.08);
 }
 
@@ -45,18 +47,12 @@ p { text-wrap: pretty; }
   filter: grayscale(1) invert(0.92) contrast(0.9);
 }
 
-/* Cinta de servicios: velocidad constante, se pausa con el mouse */
-@keyframes marquee {
-  to { transform: translateX(-50%); }
+/* Cinta de servicios: se desplaza sola (useAutoScroll) y se arrastra, sin barra visible */
+.no-scrollbar {
+  scrollbar-width: none;
 }
-.marquee {
-  animation: marquee 50s linear infinite;
-}
-.marquee:hover {
-  animation-play-state: paused;
-}
-@media (prefers-reduced-motion: reduce) {
-  .marquee { animation: none; }
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 .marquee-mask {
   mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
